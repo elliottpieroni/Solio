@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Terrasses au soleil</title>
-<meta name="description" content="Trouvez une terrasse au soleil, à l’heure de votre choix, sur une carte d’ombres calculées.">
+<title>Solio</title>
+<meta name="description" content="Solio : localisateur de terrasses ensoleillées autour de toi.">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#eceef1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f131a" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Terrasses">
+<meta name="apple-mobile-web-app-title" content="Solio">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -66,15 +66,15 @@
   </section>
 
   <!-- intro -->
-  <div class="scr splash on" id="splash" aria-label="Terrasses au soleil">
+  <div class="scr splash on" id="splash" aria-label="Solio">
     <svg class="sp-svg" viewBox="0 0 240 130" aria-hidden="true">
       <defs><radialGradient id="spg"><stop offset="0" stop-color="#ffb000" stop-opacity=".55"/><stop offset="1" stop-color="#ffb000" stop-opacity="0"/></radialGradient></defs>
       <line class="sp-hor" x1="4" y1="121" x2="236" y2="121"/>
       <path class="sp-arc" d="M20 120 Q120 -30 220 120"/>
       <g class="sp-sun"><circle class="sp-glow" r="34" fill="url(#spg)"/><circle r="11" fill="#ffb000"/></g>
     </svg>
-    <h1 class="sp-t"><span>Terrasses</span><span>au soleil</span></h1>
-    <p class="sp-s">Ombres calculées en direct</p>
+    <h1 class="sp-t" aria-label="Solio"><span style="--k:0">S</span><span style="--k:1">o</span><span style="--k:2">l</span><span style="--k:3">i</span><span class="sun-o on" style="--k:4"></span></h1>
+    <p class="sp-s">Localisateur de terrasses ensoleillées autour de toi</p>
   </div>
 
   <!-- choix -->
@@ -82,7 +82,7 @@
     <svg class="sunbg" viewBox="0 0 200 200" aria-hidden="true"><g fill="#ffb000" opacity=".9"><circle cx="100" cy="100" r="46"/></g><g stroke="#ffb000" stroke-width="7" stroke-linecap="round" opacity=".75"><path d="M100 14v22M100 164v22M14 100h22M164 100h22M39 39l15 15M146 146l15 15M39 161l15-15M146 54l15-15"/></g></svg>
     <svg class="cloud c1" viewBox="0 0 120 50" aria-hidden="true"><path fill="#fff" d="M22 46a16 16 0 0 1-1-32 22 22 0 0 1 42-4 18 18 0 0 1 31 14 14 14 0 0 1-2 22z"/></svg>
     <svg class="cloud c2" viewBox="0 0 120 50" aria-hidden="true"><path fill="#fff" d="M22 46a16 16 0 0 1-1-32 22 22 0 0 1 42-4 18 18 0 0 1 31 14 14 14 0 0 1-2 22z"/></svg>
-    <div class="hd stg" style="--i:1"><small id="askwhen">–</small><h2>Un coin de<br><b>soleil</b> pour…</h2></div>
+    <div class="hd stg" style="--i:1"><h2>Un coin de<br><b>soleil</b> pour…</h2></div>
     <div class="tiles">
       <button class="tile t1 stg" data-c="boire" style="--i:3">
         <span class="go"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>C’est parti</span>
@@ -121,7 +121,6 @@
         <b>Manger<br>dehors</b><span class="sub">Restaurants, glaciers, snacks</span>
       </button>
     </div>
-    <div class="foot stg" style="--i:5">Soleil calculé sur le relief LiDAR de l’IGN</div>
   </section>
 
   <!-- top 5 -->
@@ -131,7 +130,7 @@
       <label class="where2"><small>Autour de</small><b id="wname2">–</b><select id="from2" aria-label="Point de départ"></select></label>
       <button class="roundbtn" id="loc" aria-label="Autour de moi"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.500"/><circle cx="12" cy="12" r="8"/><path d="M12 1.500v3M12 19.500v3M1.500 12h3M19.500 12h3"/></svg></button>
     </header>
-    <div class="t5t stg" style="--i:1"><h2 id="t5title">Top 5</h2><p id="t5sub"></p><button class="chip walkchip" id="walkChip"><svg class="i" viewBox="0 0 24 24"><circle cx="13" cy="4.500" r="1.800"/><path d="M9 21l3-7 3 3v5M12 14l-1-5 4 1 2 3M10 9l-3 3"/></svg><span>10 min à pied max</span></button></div>
+    <div class="t5t stg" style="--i:1"><h2 id="t5title">Top 5</h2><button class="chip walkchip" id="walkChip"><svg class="i" viewBox="0 0 24 24"><circle cx="13" cy="4.500" r="1.800"/><path d="M9 21l3-7 3 3v5M12 14l-1-5 4 1 2 3M10 9l-3 3"/></svg><span>10 min à pied max</span></button></div>
     <div class="t5list" id="t5list"></div>
     <footer class="t5f stg" style="--i:7"><button class="cta" id="t5map">Voir sur la carte<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></footer>
   </section>

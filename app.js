@@ -382,9 +382,9 @@ function go(id){
     else if(e.classList.contains('on')||!e.hidden){e.classList.remove('on');setTimeout(()=>{if(!e.classList.contains('on'))e.hidden=true;},560);}}
 }
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let splashT=setTimeout(()=>showAsk(),reduced?500:3000);
+let splashT=setTimeout(()=>showAsk(),reduced?500:3900);
 $('splash').addEventListener('click',()=>{clearTimeout(splashT);showAsk();});
-function showAsk(){$('askwhen').textContent=fmtDate()+' · '+hm(selMin);go('ask');}
+function showAsk(){go('ask');}
 // tuiles : inclinaison au doigt, éclats de soleil au choix
 function burst(x,y,host){const cols=['#ffb000','#ffd36b','#ff7058','#ffffff','#ff9f80'];
   for(let i=0;i<18;i++){const s=document.createElement('span');s.className='spk';s.style.left=x+'px';s.style.top=y+'px';s.style.background=cols[i%cols.length];
@@ -431,7 +431,6 @@ async function renderTop5(){
   const SUN='<span class="sunword"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.500"/><path d="M12 1.500v3.500M12 19v3.500M1.500 12H5M19 12h3.500M4.600 4.600l2.500 2.500M16.900 16.900l2.500 2.500M4.600 19.400l2.500-2.500M16.900 7.100l2.500-2.500"/></svg>au soleil</span>';
   $('t5title').innerHTML=(cat==='boire'?'Bois un verre en terrasse ':'Mange en terrasse ')+SUN+' ici :';
   $('walkChip').querySelector('span').textContent=walkMin+' min à pied max';
-  $('t5sub').textContent=fmtDate()+' · '+hm(selMin)+' · ombres calculées en direct';
   $('wname2').textContent=PLACES[from][0];$('from2').value=from;
   if(!G){box.innerHTML='<div class="skel">Calcul des ombres sur le relief LiDAR…</div>';await READY;}
   t5List=topSpots();box.replaceChildren();
