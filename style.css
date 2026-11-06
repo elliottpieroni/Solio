@@ -288,3 +288,44 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .sheet h3{text-wrap:balance}
 
 .walkchip{margin-top:14px}
+
+/* vraies photos */
+.ph.has-photo .im{left:0;top:0;width:100%;height:100%;aspect-ratio:auto;transform:none}
+.ph.has-photo .im .mk{display:none}
+.spot:not(.first) .ph.has-photo .im{width:100%}
+.aer{position:absolute;right:10px;bottom:10px;width:62px;height:62px;border-radius:16px;overflow:hidden;box-shadow:0 0 0 2.5px #fff,0 6px 14px rgba(0,0,0,.35)}
+.aer img{position:absolute;width:180%;height:180%;left:-40%;top:-40%;max-width:none;object-fit:cover}
+.aer .mk{width:12px;height:12px;margin:-6px 0 0 -6px}
+.th.has-photo img{position:static;width:100%;height:100%;object-fit:cover}
+.th.has-photo .mk{display:none}
+
+/* intro festive */
+.splash{background:linear-gradient(180deg,#ffd23a 0%,#ffb000 48%,#ff7a45 100%);overflow:hidden;color:#2a1700;gap:0}
+.sp-rays{position:absolute;left:50%;top:44%;width:210vmax;height:210vmax;margin:-105vmax 0 0 -105vmax;background:repeating-conic-gradient(rgba(255,255,255,.26) 0 7deg,transparent 7deg 20deg);animation:raysIn 1.1s cubic-bezier(.2,.8,.2,1) both,raysSpin 28s linear infinite;-webkit-mask-image:radial-gradient(circle,#000 0,transparent 36%);mask-image:radial-gradient(circle,#000 0,transparent 36%)}
+@keyframes raysIn{from{opacity:0;transform:scale(.2)}}
+@keyframes raysSpin{to{transform:rotate(360deg)}}
+.sp-sun2{position:absolute;left:50%;top:44%;width:250px;height:250px;margin:-125px 0 0 -125px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#fffbe0,#fff3a8 45%,#ffd23a 80%);box-shadow:0 0 90px 30px rgba(255,255,255,.5);animation:sunUp 1s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes sunUp{from{transform:translateY(70vh) scale(.4)}}
+.sp-t{position:relative;z-index:2;margin:0;font:600 92px/1 var(--display);letter-spacing:-.03em;color:#2a1700;text-shadow:0 4px 0 rgba(255,255,255,.55)}
+.sp-t span{animation:hop .9s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(.55s + var(--k)*.09s)}
+@keyframes hop{0%{opacity:0;transform:translateY(-90px) rotate(calc(var(--k)*9deg - 20deg)) scale(.6)}55%{opacity:1;transform:translateY(8px) rotate(0) scale(1.15,.88)}100%{opacity:1;transform:none}}
+.sp-t span:not(.sun-o){animation:hop .9s cubic-bezier(.2,1.5,.4,1) both calc(.55s + var(--k)*.09s),wave 2.2s ease-in-out calc(1.9s + var(--k)*.12s) infinite}
+@keyframes wave{50%{transform:translateY(-9px) rotate(-3deg)}}
+.sp-t .sun-o,.sp-t .sun-o.on{background:radial-gradient(circle at 35% 30%,#ffe36a,#ffb000 45%,#ff6a00);box-shadow:0 0 0 5px #2a1700;animation:hop .9s cubic-bezier(.2,1.5,.4,1) both calc(.55s + var(--k)*.09s),beat2 1.1s ease-in-out 1.6s infinite}
+.sp-s{position:relative;z-index:2;margin:16px 0 0;max-width:14em;text-align:center;font:600 17px/1.35 var(--body,inherit);color:#2a1700;opacity:0;animation:tagPop .7s cubic-bezier(.2,1.4,.4,1) 1.5s forwards}
+@keyframes tagPop{from{opacity:0;transform:translateY(14px) scale(.9)}to{opacity:1;transform:none}}
+.sp-cheers{position:absolute;z-index:2;left:50%;bottom:calc(7% + env(safe-area-inset-bottom,0px));width:min(80vw,310px);margin-left:calc(min(80vw,310px)/-2);overflow:visible}
+.sp-cheers .gl{transform-box:fill-box;transform-origin:50% 100%;opacity:0}
+.sp-cheers .gl-l{transform:translate(70px,128px)}.sp-cheers .gl-r{transform:translate(190px,128px)}
+.sp-cheers .gl-l{animation:clinkL 1.3s cubic-bezier(.3,1.4,.4,1) 1.05s forwards,sway 2.4s ease-in-out 2.6s infinite}
+.sp-cheers .gl-r{animation:clinkR 1.3s cubic-bezier(.3,1.4,.4,1) 1.05s forwards,sway 2.4s ease-in-out 2.9s infinite reverse}
+@keyframes clinkL{0%{opacity:0;transform:translate(10px,150px) rotate(-30deg)}40%{opacity:1}100%{opacity:1;transform:translate(70px,128px) rotate(12deg)}}
+@keyframes clinkR{0%{opacity:0;transform:translate(250px,150px) rotate(30deg)}40%{opacity:1}100%{opacity:1;transform:translate(190px,128px) rotate(-12deg)}}
+@keyframes sway{50%{translate:0 -8px}}
+@keyframes beat2{50%{transform:scale(1.14)}}
+.sp-cheers .spark{transform-box:fill-box;transform-origin:center;opacity:0;animation:spark .7s ease-out 1.95s forwards}
+@keyframes spark{0%{opacity:1;transform:scale(0) rotate(0)}50%{opacity:1;transform:scale(1.4) rotate(30deg)}100%{opacity:0;transform:scale(1.9) rotate(60deg)}}
+.sp-conf{position:absolute;left:50%;top:44%;width:0;height:0;z-index:3;pointer-events:none}
+.sp-conf i{position:absolute;left:0;top:0;width:var(--w);height:var(--h);background:var(--c);border-radius:var(--r);opacity:0;animation:conf 2.4s cubic-bezier(.15,.7,.3,1) var(--d) forwards}
+@keyframes conf{0%{opacity:1;transform:translate(0,0) rotate(0) scale(.3)}30%{opacity:1;transform:translate(var(--x),var(--y)) rotate(var(--a)) scale(1)}100%{opacity:0;transform:translate(calc(var(--x)*1.25),calc(var(--y) + 380px)) rotate(calc(var(--a)*3)) scale(1)}}
+@media (prefers-reduced-motion:reduce){.sp-conf{display:none}.sp-rays,.sp-t span,.sp-cheers .gl{animation:none!important;opacity:1}.sp-cheers .gl-l{transform:translate(70px,128px) rotate(12deg)}.sp-cheers .gl-r{transform:translate(190px,128px) rotate(-12deg)}.sp-s{animation:none;opacity:1}}

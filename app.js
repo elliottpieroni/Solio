@@ -143,10 +143,11 @@ function drawMap(){
   else if(!sunAt(selMin)){mx.globalAlpha=.4;mx.fillStyle=TK.night;mx.fillRect(0,0,w,h);mx.globalAlpha=1;}
   drawLabels(mx,w,h,cxw,cyw,scale);
   // rayon de recherche : l'extérieur s'efface
-  const [fx,fy]=PLACES[from].slice(1),c=w2s(fx,fy),r=dist*scale;
-  mx.save();mx.beginPath();mx.rect(0,0,w,h);mx.arc(c[0],c[1],r,0,Math.PI*2);mx.fillStyle=TK.veil;mx.fill('evenodd');mx.restore();
+  const [fx,fy]=PLACES[from].slice(1),c=w2s(fx,fy),r=dist*scale,showR=sel&&route&&route.p===sel;
+  if(!showR){  mx.save();mx.beginPath();mx.rect(0,0,w,h);mx.arc(c[0],c[1],r,0,Math.PI*2);mx.fillStyle=TK.veil;mx.fill('evenodd');mx.restore();
   mx.save();mx.strokeStyle=TK.fg;mx.globalAlpha=.4;mx.lineWidth=1.25;mx.setLineDash([5,6]);mx.beginPath();mx.arc(c[0],c[1],r,0,Math.PI*2);mx.stroke();mx.restore();
   mx.fillStyle=TK.fg;mx.strokeStyle=TK.bg;mx.lineWidth=2.5;mx.beginPath();mx.arc(c[0],c[1],5,0,Math.PI*2);mx.fill();mx.stroke();
+  }else drawRoute(mx);
   // terrasses
   let onQ=null;
   for(const {p,st} of RES){const q=w2s(p.sx,p.sy);if(q[0]<-30||q[1]<-30||q[0]>w+30||q[1]>h+30)continue;
@@ -164,6 +165,69 @@ function drawMap(){
     const tw=mx.measureText(sel.n).width,bw=tw+18,bh=26,bx=clamp(q[0]-bw/2,8,w-bw-8),by=q[1]-bh-20;
     mx.fillStyle=TK.card;mx.strokeStyle=TK.line;mx.lineWidth=1;mx.beginPath();mx.roundRect(bx,by,bw,bh,13);mx.fill();mx.stroke();
     mx.fillStyle=TK.fg;mx.fillText(sel.n,bx+bw/2,by+bh/2+.5);}
+}
+
+
+// ---- itinéraire à pied (graphe des rues du plan)
+const GR=(()=>{const nodes=[],adj=[],segs=[],map=new Map(),key=(x,y)=>Math.round(x/2)+','+Math.round(y/2);
+  const node=(x,y)=>{const k=key(x,y);let i=map.get(k);if(i==null){i=nodes.length;nodes.push([x,y]);adj.push([]);map.set(k,i);}return i;};
+  const link=(a,b)=>{if(a===b)return;const d=Math.hypot(nodes[a][0]-nodes[b][0],nodes[a][1]-nodes[b][1]);adj[a].push([b,d]);adj[b].push([a,d]);};
+  for(const r of ROADS){let pv=-1;for(let i=0;i+1<r.c.length;i+=2){const n=node(r.c[i],r.c[i+1]);if(pv>=0&&pv!==n){link(pv,n);segs.push([pv,n]);}pv=n;}}
+  const H=new Map(),hk=(x,y)=>Math.floor(x/6)+','+Math.floor(y/6);
+  nodes.forEach((q,i)=>{const k=hk(q[0],q[1]);(H.get(k)||H.set(k,[]).get(k)).push(i);});
+  nodes.forEach((q,i)=>{const cx=Math.floor(q[0]/6),cy=Math.floor(q[1]/6);
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const j of H.get((cx+a)+','+(cy+b))||[])if(j>i&&Math.hypot(nodes[j][0]-q[0],nodes[j][1]-q[1])<5&&!adj[i].some(e=>e[0]===j))link(i,j);});
+  return{nodes,adj,segs};})();
+function snapSeg(x,y){let best=null,bd=1e9;
+  for(const [a,b] of GR.segs){const A=GR.nodes[a],B=GR.nodes[b],dx=B[0]-A[0],dy=B[1]-A[1],L=dx*dx+dy*dy||1;
+    let t=((x-A[0])*dx+(y-A[1])*dy)/L;t=Math.max(0,Math.min(1,t));const px=A[0]+t*dx,py=A[1]+t*dy,d=Math.hypot(x-px,y-py);
+    if(d<bd){bd=d;best={a,b,px,py,d};}}
+  return best;}
+function walkRoute(ax,ay,bx,by){
+  const N0=GR.nodes.length,sa=snapSeg(ax,ay),sb=snapSeg(bx,by);if(!sa||!sb||sa.d>90||sb.d>90)return null;
+  const touched=[];
+  const addT=s=>{const i=GR.nodes.length;GR.nodes.push([s.px,s.py]);GR.adj.push([]);
+    for(const e of [s.a,s.b]){const d=Math.hypot(GR.nodes[e][0]-s.px,GR.nodes[e][1]-s.py);GR.adj[i].push([e,d]);GR.adj[e].push([i,d]);touched.push(e);}return i;};
+  const S=addT(sa),T=addT(sb);
+  if(sa.a===sb.a&&sa.b===sb.b){const d=Math.hypot(sa.px-sb.px,sa.py-sb.py);GR.adj[S].push([T,d]);GR.adj[T].push([S,d]);}
+  const n=GR.nodes.length,dist=new Float64Array(n).fill(1e12),prev=new Int32Array(n).fill(-1),done=new Uint8Array(n);dist[S]=0;
+  const heap=[[0,S]];const push=v=>{heap.push(v);let i=heap.length-1;while(i>0){const p=(i-1)>>1;if(heap[p][0]<=heap[i][0])break;[heap[p],heap[i]]=[heap[i],heap[p]];i=p;}};
+  const pop=()=>{const t=heap[0],l=heap.pop();if(heap.length){heap[0]=l;let i=0;for(;;){let c=2*i+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1][0]<heap[c][0])c++;if(heap[i][0]<=heap[c][0])break;[heap[i],heap[c]]=[heap[c],heap[i]];i=c;}}return t;};
+  while(heap.length){const [d,u]=pop();if(done[u])continue;done[u]=1;if(u===T)break;
+    for(const [v,w] of GR.adj[u])if(d+w<dist[v]){dist[v]=d+w;prev[v]=u;push([dist[v],v]);}}
+  let path=null;
+  if(done[T]){path=[];for(let u=T;u>=0;u=prev[u])path.push(GR.nodes[u].slice());path.reverse();}
+  // nettoyage
+  GR.nodes.length=N0;GR.adj.length=N0;for(const e of touched)GR.adj[e]=GR.adj[e].filter(x=>x[0]<N0);
+  if(!path)return null;
+  const pts=[[ax,ay],...path,[bx,by]];let len=0;for(let i=1;i<pts.length;i++)len+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);
+  const direct=Math.hypot(bx-ax,by-ay);
+  if(len>direct*3.2+120)return{pts:[[ax,ay],[bx,by]],len:direct*1.25,straight:true};
+  return{pts,len,straight:false};}
+let route=null,routeProg=1,routeAnim=0;
+function makeRoute(p){const [,fx,fy]=PLACES[from];let r=walkRoute(fx,fy,p.sx,p.sy);if(!r){const d=Math.hypot(p.sx-fx,p.sy-fy);r={pts:[[fx,fy],[p.sx,p.sy]],len:d*1.25,straight:true};}r.p=p;return r;}
+function revealRoute(){const id=++routeAnim;if(matchMedia('(prefers-reduced-motion: reduce)').matches){routeProg=1;drawMap();return;}
+  routeProg=0;const t0=performance.now();(function st(t){if(id!==routeAnim)return;const k=Math.min(1,(t-t0-250)/900);routeProg=Math.max(0,1-Math.pow(1-k,3));drawMap();if(k<1)requestAnimationFrame(st);})(t0);}
+function fitRoute(ms){if(!route)return;const xs=route.pts.map(q=>q[0]),ys=route.pts.map(q=>q[1]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),dx=Math.max(60,x1-x0),dy=Math.max(60,y1-y0);
+  const sc=clamp(Math.min((mc.clientWidth-96)/dx,(visH()-120)/dy),.5,4.2);fly((x0+x1)/2,(y0+y1)/2,sc,ms);}
+function drawRoute(mx){
+  const pts=route.pts.map(q=>w2s(q[0],q[1])),seg=[];let tot=0;
+  for(let i=1;i<pts.length;i++){const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);seg.push(d);tot+=d;}
+  const lim=tot*routeProg,path=[pts[0]];let acc=0;
+  for(let i=1;i<pts.length;i++){if(acc+seg[i-1]<=lim){path.push(pts[i]);acc+=seg[i-1];}else{const k=seg[i-1]?(lim-acc)/seg[i-1]:0;path.push([pts[i-1][0]+(pts[i][0]-pts[i-1][0])*k,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*k]);break;}}
+  const stroke=(w,c,dash)=>{mx.save();mx.lineCap='round';mx.lineJoin='round';mx.setLineDash(dash||[]);mx.lineWidth=w;mx.strokeStyle=c;mx.beginPath();path.forEach((q,i)=>i?mx.lineTo(q[0],q[1]):mx.moveTo(q[0],q[1]));mx.stroke();mx.restore();};
+  if(route.straight){stroke(8,'rgba(255,255,255,.9)');stroke(4,'#2f6bff',[1,9]);}
+  else{stroke(10,'rgba(255,255,255,.95)');stroke(6,'#2f6bff');}
+  // départ
+  const o=pts[0];mx.fillStyle='rgba(47,107,255,.22)';mx.beginPath();mx.arc(o[0],o[1],17,0,Math.PI*2);mx.fill();
+  mx.fillStyle='#2f6bff';mx.strokeStyle='#fff';mx.lineWidth=3.5;mx.beginPath();mx.arc(o[0],o[1],7.5,0,Math.PI*2);mx.fill();mx.stroke();
+  // pastille durée
+  if(routeProg>.85){let half=tot/2,acc2=0,m=pts[0];for(let i=1;i<pts.length;i++){if(acc2+seg[i-1]>=half){const k=(half-acc2)/(seg[i-1]||1);m=[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*k,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*k];break;}acc2+=seg[i-1];}
+    const mins=Math.max(1,Math.round(route.len/WALK)),txt=mins+' min · '+(route.len<950?Math.round(route.len/10)*10+' m':(route.len/1000).toFixed(1).replace('.',',')+' km');
+    mx.font='700 12.5px "DM Sans",sans-serif';mx.textAlign='center';mx.textBaseline='middle';const tw=mx.measureText(txt).width,bw=tw+22,bh=26;
+    const bx=clamp(m[0]-bw/2,8,mc.clientWidth-bw-8),by=m[1]-bh/2;
+    mx.fillStyle='#2f6bff';mx.beginPath();mx.roundRect(bx,by,bw,bh,13);mx.fill();mx.strokeStyle='#fff';mx.lineWidth=2;mx.stroke();mx.fillStyle='#fff';mx.fillText(txt,bx+bw/2,by+bh/2+.5);}
 }
 
 // caméra : vol animé, le point visé se place au centre de la zone visible
@@ -261,12 +325,14 @@ $('tray').addEventListener('scroll',()=>{if(listOpen||Date.now()<prog)return;cle
 function select(p,o){o=o||{};sel=p;
   CARDS.forEach((el,i)=>el.classList.toggle('on',!!p&&p.i===i));
   if(p&&o.scroll!==false)centerCard(p,true);
-  if(p&&o.fly!==false)fly(p.sx,p.sy,o.zoom||(scale<2?2.6:scale));
+  route=p?makeRoute(p):null;
+  if(p&&o.fly!==false){if(route){fitRoute();revealRoute();}else fly(p.sx,p.sy,o.zoom||(scale<2?2.6:scale));}
+  else if(route)routeProg=1;
   drawDial();drawMap();}
 function pick(p){if(listOpen)setOpen(false);select(p);}
 function setOpen(v){listOpen=v;$('panel').classList.toggle('open',v);$('grab').setAttribute('aria-expanded',v);
   $('grab').setAttribute('aria-label',v?'Replier la liste':'Afficher la liste');
-  requestAnimationFrame(()=>{layout();if(sel){centerCard(sel,false);fly(sel.sx,sel.sy,scale,350);}else drawMap();});}
+  requestAnimationFrame(()=>{layout();if(sel){centerCard(sel,false);if(route&&route.p===sel)fitRoute(350);else fly(sel.sx,sel.sy,scale,350);}else drawMap();});}
 
 // ---- cadran solaire
 const dial=$('dial');
@@ -383,7 +449,10 @@ function go(id){
     else if(e.classList.contains('on')||!e.hidden){e.classList.remove('on');setTimeout(()=>{if(!e.classList.contains('on'))e.hidden=true;},560);}}
 }
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let splashT=setTimeout(()=>showAsk(),reduced?500:3900);
+(function(){const C=['#ff4d6d','#fff','#2a1700','#3aa0e8','#7ad35f','#ff8a1f','#b06cff','#ffe45e'],box=$('conf');if(!box)return;
+  for(let i=0;i<46;i++){const e=document.createElement('i'),a=Math.random()*Math.PI*2,d=90+Math.random()*190;
+    const w=5+Math.random()*7,sq=Math.random()<.5;e.style.cssText='--x:'+Math.round(Math.cos(a)*d)+'px;--y:'+Math.round(Math.sin(a)*d*.8-40)+'px;--a:'+Math.round((Math.random()-.5)*540)+'deg;--d:'+(1.15+Math.random()*.35).toFixed(2)+'s;--c:'+C[i%C.length]+';--w:'+w+'px;--h:'+(sq?w:w*2.2)+'px;--r:'+(Math.random()<.4?'50%':'2px');box.appendChild(e);}})();
+let splashT=setTimeout(()=>showAsk(),reduced?500:4300);
 $('splash').addEventListener('click',()=>{clearTimeout(splashT);showAsk();});
 function showAsk(){go('ask');}
 // tuiles : inclinaison au doigt, éclats de soleil au choix
@@ -452,7 +521,7 @@ function openMapOn(p){
   stopPlay();go(null);dist=Math.max(150,walkMin*WALK);save();layout();sel=p||null;filter();
   if(p&&!RES.some(r=>r.p===p))sel=null;
   render(true,true);
-  if(sel)select(sel,{zoom:3.2});else goOverview(500);
+  if(sel)select(sel);else goOverview(500);
 }
 
 // ---- contrôles
