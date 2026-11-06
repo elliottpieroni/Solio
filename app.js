@@ -204,7 +204,8 @@ const CARDS=new Map();
 function makeCard(p){
   const el=document.createElement('article');el.className='card';el.dataset.i=p.i;
   const th=document.createElement('button');th.className='th';th.setAttribute('aria-label','Agrandir la vue aérienne de '+p.n);
-  const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';img.src='thumbs/t'+p.i+'.jpg';th.appendChild(img);
+  const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';const aer='thumbs/t'+p.i+'.jpg',pic=photoOf(p);img.src=pic||aer;if(pic)th.classList.add('has-photo');
+  img.onerror=()=>{if(pic&&th.classList.contains('has-photo')){th.classList.remove('has-photo');img.src=aer;}};th.appendChild(img);
   const m=document.createElement('span');m.className='mk sh';const span=80/1.8;
   m.style.left=(50+(p.sx-p.x)/span*100)+'%';m.style.top=(50-(p.sy-p.y)/span*100)+'%';th.appendChild(m);
   th.onclick=e=>{e.stopPropagation();openLB(p);};
@@ -415,7 +416,11 @@ function spotCard(r,i){
   const {p,d,st}=r,[cls,txt]=pill(p,st);
   const el=document.createElement('button');el.className='spot stg'+(i===0?' first':'');el.style.setProperty('--i',i+2);
   el.innerHTML='<div class="ph"><div class="im"><img alt="" decoding="async"><span class="mk"></span></div><span class="rk"></span></div><div class="sb"><div class="sn"></div><div class="sk"></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div></div>';
-  const img=el.querySelector('img');img.src='thumbs/t'+p.i+'.jpg';img.onerror=()=>{img.style.display='none';};
+  const img=el.querySelector('img'),aer='thumbs/t'+p.i+'.jpg',pic=photoOf(p),phEl=el.querySelector('.ph');
+  img.src=pic||aer;if(pic)phEl.classList.add('has-photo');
+  img.onerror=()=>{if(pic&&phEl.classList.contains('has-photo')){phEl.classList.remove('has-photo');img.src=aer;}else img.style.display='none';};
+  if(pic&&i===0){const ins=document.createElement('span');ins.className='aer';const ai=new Image();ai.alt='';ai.src=aer;const am=document.createElement('span');am.className='mk '+(st===2?'sun':'sh');
+    const sp=80/1.8;am.style.left=(50+(p.sx-p.x)/sp*100)+'%';am.style.top=(50-(p.sy-p.y)/sp*100)+'%';ins.append(ai,am);phEl.appendChild(ins);}
   const mk=el.querySelector('.mk'),span=80;
   mk.className='mk '+(st===2?'sun':'sh');mk.style.left=(50+(p.sx-p.x)/span*100)+'%';mk.style.top=(50-(p.sy-p.y)/span*100)+'%';
   el.querySelector('.rk').textContent=i===0?'N° 1 · meilleur spot':String(i+1);
@@ -522,3 +527,13 @@ $('walkGo').onclick=()=>{save();closeWalk();if($('top5').classList.contains('on'
 $('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
 $('walkChip').onclick=openWalk;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('walk').hidden)closeWalk();});
+
+// ---- vraies photos des établissements (photos.json, produit par build_photos.py)
+var PHOTOS={};
+const visOf=p=>'visuels/v'+((BOIRE.has(p.k)?0:8)+(p.i*5+p.n.length)%8)+'.jpg';
+const photoOf=p=>PHOTOS[p.i]||visOf(p);
+fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
+  PHOTOS=j||{};if(!Object.keys(PHOTOS).length)return;
+  CARDS.clear();trayMode='';
+  if($('top5').classList.contains('on')&&G)renderTop5();else if(G)schedule(false);
+}).catch(()=>{});
