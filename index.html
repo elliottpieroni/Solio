@@ -82,7 +82,6 @@
     <svg class="sunbg" viewBox="0 0 200 200" aria-hidden="true"><g fill="#ffb000" opacity=".9"><circle cx="100" cy="100" r="46"/></g><g stroke="#ffb000" stroke-width="7" stroke-linecap="round" opacity=".75"><path d="M100 14v22M100 164v22M14 100h22M164 100h22M39 39l15 15M146 146l15 15M39 161l15-15M146 54l15-15"/></g></svg>
     <svg class="cloud c1" viewBox="0 0 120 50" aria-hidden="true"><path fill="#fff" d="M22 46a16 16 0 0 1-1-32 22 22 0 0 1 42-4 18 18 0 0 1 31 14 14 14 0 0 1-2 22z"/></svg>
     <svg class="cloud c2" viewBox="0 0 120 50" aria-hidden="true"><path fill="#fff" d="M22 46a16 16 0 0 1-1-32 22 22 0 0 1 42-4 18 18 0 0 1 31 14 14 14 0 0 1-2 22z"/></svg>
-    <div class="roll stg" style="--i:0" aria-hidden="true"><div class="trk" id="roll"></div></div>
     <div class="hd stg" style="--i:1"><small id="askwhen">–</small><h2>Un coin de<br><b>soleil</b> pour…</h2></div>
     <div class="tiles">
       <button class="tile t1 stg" data-c="boire" style="--i:3">
@@ -132,10 +131,28 @@
       <label class="where2"><small>Autour de</small><b id="wname2">–</b><select id="from2" aria-label="Point de départ"></select></label>
       <button class="roundbtn" id="loc" aria-label="Autour de moi"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.500"/><circle cx="12" cy="12" r="8"/><path d="M12 1.500v3M12 19.500v3M1.500 12h3M19.500 12h3"/></svg></button>
     </header>
-    <div class="t5t stg" style="--i:1"><h2 id="t5title">Top 5</h2><p id="t5sub"></p></div>
+    <div class="t5t stg" style="--i:1"><h2 id="t5title">Top 5</h2><p id="t5sub"></p><button class="chip walkchip" id="walkChip"><svg class="i" viewBox="0 0 24 24"><circle cx="13" cy="4.500" r="1.800"/><path d="M9 21l3-7 3 3v5M12 14l-1-5 4 1 2 3M10 9l-3 3"/></svg><span>10 min à pied max</span></button></div>
     <div class="t5list" id="t5list"></div>
     <footer class="t5f stg" style="--i:7"><button class="cta" id="t5map">Voir sur la carte<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></footer>
   </section>
+
+  <!-- fenêtre : distance à pied -->
+  <div class="walk" id="walk" hidden>
+    <div class="scrim" id="walkScrim"></div>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="walkT">
+      <div class="sh-grip" aria-hidden="true"></div>
+      <div class="sh-top"><small id="walkWhat">–</small><button class="roundbtn" id="walkX" aria-label="Fermer"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <h3 id="walkT">Jusqu’où veux-tu marcher&nbsp;?</h3>
+      <div class="wread"><b id="walkMin">10</b><span>min à pied</span><em id="walkM">≈ 800 m</em></div>
+      <div class="wtrack" aria-hidden="true">
+        <span class="walker" id="walker"><svg viewBox="0 0 24 24"><circle cx="13" cy="4.500" r="1.900"/><path d="M9 21l3-7 3 3v5M12 14l-1-5 4 1 2 3M10 9l-3 3"/></svg></span>
+      </div>
+      <input type="range" id="walkRange" min="3" max="20" step="1" value="10" aria-label="Minutes de marche maximum">
+      <div class="wscale" aria-hidden="true"><span>3 min</span><span>20 min</span></div>
+      <div class="wchips"><button class="chip wc" data-m="5">5 min</button><button class="chip wc" data-m="10">10 min</button><button class="chip wc" data-m="15">15 min</button><button class="chip wc" data-m="20">20 min</button></div>
+      <button class="cta" id="walkGo">Voir les 5 spots<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </section>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -146,6 +163,6 @@
 </div>
 <script src="data.js"></script>
 <script src="app.js"></script>
-<script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
+<script>if("serviceWorker"in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!window.__rl){window.__rl=1;location.reload();}});addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
 </body>
 </html>

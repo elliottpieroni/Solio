@@ -167,15 +167,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .ask .cloud.c1{top:96px;left:-30px;width:110px}
 .ask .cloud.c2{top:150px;right:-20px;width:80px;animation-duration:34s;animation-delay:-8s;opacity:.65}
 @keyframes drift{from{transform:translateX(0)}to{transform:translateX(46px)}}
-.roll{position:relative;overflow:hidden;height:78px;flex:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
-.roll .trk{display:flex;gap:10px;width:max-content;padding:6px 0;animation:roll 38s linear infinite}
-@keyframes roll{to{transform:translateX(-50%)}}
-.bub{position:relative;flex:none;width:64px;height:64px;border-radius:22px;overflow:hidden;box-shadow:0 6px 14px -6px rgba(10,20,40,.45),0 0 0 2.5px #fff;animation:bob 3.4s ease-in-out infinite;animation-delay:calc(var(--k,0)*-.5s)}
-.bub:nth-child(even){border-radius:50%}
-.bub img{width:100%;height:100%;object-fit:cover;transform:scale(1.7);display:block}
-.bub i{position:absolute;right:6px;top:6px;width:11px;height:11px;border-radius:50%;background:var(--sun);box-shadow:0 0 0 2px #fff,0 0 10px 2px var(--sun)}
-@keyframes bob{50%{transform:translateY(-7px) rotate(-2deg)}}
-.ask .hd{position:relative;padding:0 var(--gutter-r) 0 var(--gutter-l)}
+.ask .hd{position:relative;padding:22px var(--gutter-r) 0 var(--gutter-l)}
 .ask small{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg);opacity:.62}
 .ask h2{margin:6px 0 0;font:300 40px/1.02 var(--display);letter-spacing:-.02em;color:var(--fg)}
 .ask h2 b{font-weight:300;background:linear-gradient(transparent 62%,var(--sun) 62% 90%,transparent 90%)}
@@ -195,8 +187,6 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .tile:hover .go svg,.tile:focus-visible .go svg{transform:translateX(3px)}
 .ask .foot{position:relative;font-size:12px;color:var(--muted);text-align:center;padding:0 var(--gutter-r) 0 var(--gutter-l)}
 /* animations d'illustrations */
-.bubble{animation:rise 3s ease-in infinite;opacity:0}
-.bubble:nth-of-type(2){animation-delay:-1s}.bubble:nth-of-type(3){animation-delay:-2s}.bubble:nth-of-type(4){animation-delay:-.5s}
 @keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:.9}100%{transform:translateY(-62px);opacity:0}}
 .ice{animation:ice 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 .ice.i2{animation-delay:-1.6s}
@@ -254,3 +244,42 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 @keyframes pulse2{50%{background:var(--sun);color:var(--sun-ink)}}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:30;max-width:min(92vw,420px);transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 16px;border-radius:18px;background:var(--fg);color:var(--bg);font-size:13.5px;line-height:1.35;text-align:center;transition:opacity .3s,transform .3s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* titre animé du top 5 */
+.sunword{position:relative;display:inline-block;margin:0 .04em;padding:0 .26em 0 .2em;border-radius:.34em;color:#2a1700;font-weight:400;white-space:nowrap;
+  background:linear-gradient(100deg,#ffc933 0%,#ffb000 30%,#ffe27a 50%,#ffb000 70%,#ffc933 100%);background-size:300% 100%;
+  box-shadow:0 0 0 0 rgba(255,176,0,.55);animation:shimmer 3.2s linear infinite,glow 2.2s ease-in-out infinite,pop .8s cubic-bezier(.2,1.4,.4,1) both .35s}
+.sunword svg{width:.74em;height:.74em;margin:0 .1em -.06em 0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;animation:spin 8s linear infinite}
+@keyframes shimmer{to{background-position:-300% 0}}
+@keyframes glow{50%{box-shadow:0 0 22px 4px rgba(255,176,0,.55)}}
+@keyframes pop{from{transform:scale(.6) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
+.walkchip{margin-top:12px;display:inline-flex;align-items:center;gap:7px;height:36px}
+.walkchip svg.i{width:17px;height:17px}
+/* fenêtre distance */
+.walk{position:absolute;inset:0;z-index:12;display:flex;align-items:flex-end;pointer-events:none}
+.walk.on{pointer-events:auto}
+.scrim{position:absolute;inset:0;background:rgba(10,14,22,.45);opacity:0;transition:opacity .4s}
+.walk.on .scrim{opacity:1}
+.sheet{position:relative;width:100%;border-radius:32px 32px 0 0;background:var(--card);padding:10px var(--gutter-r) 22px var(--gutter-l);transform:translateY(105%);transition:transform .45s cubic-bezier(.2,.9,.25,1);box-shadow:0 -20px 50px -20px rgba(0,0,0,.4)}
+.walk.on .sheet{transform:none}
+.sh-grip{width:42px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 10px}
+.sh-top{display:flex;align-items:center;justify-content:space-between}
+.sh-top small{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sheet h3{margin:6px 0 0;font:300 30px/1.08 var(--display);letter-spacing:-.015em}
+.wread{display:flex;align-items:baseline;gap:10px;margin:14px 0 4px}
+.wread b{font:200 76px/0.9 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;min-width:1.15em}
+.wread span{font-size:17px;font-weight:500}
+.wread em{font-style:normal;margin-left:auto;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.wtrack{position:relative;height:30px;margin:0 14px -6px}
+.walker{position:absolute;bottom:0;width:30px;height:30px;margin-left:-15px;display:grid;place-items:center;color:var(--fg);transition:left .15s ease-out;animation:step .5s ease-in-out infinite}
+.walker svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes step{50%{transform:translateY(-3px)}}
+#walkRange{--p:40%;-webkit-appearance:none;appearance:none;width:100%;height:34px;margin:0;background:transparent;touch-action:pan-y}
+#walkRange::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--sun) var(--p),var(--chip) var(--p))}
+#walkRange::-moz-range-track{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--sun) var(--p),var(--chip) var(--p))}
+#walkRange::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:34px;margin-top:-12px;border-radius:50%;background:#fff;border:8px solid var(--sun);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+#walkRange::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:8px solid var(--sun)}
+.wscale{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:2px 2px 0}
+.wchips{display:flex;gap:8px;margin:14px 0 18px}
+.wchips .chip{flex:1;height:40px;padding:0}
+.sheet h3{text-wrap:balance}

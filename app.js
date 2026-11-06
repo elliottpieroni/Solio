@@ -42,15 +42,15 @@ function openSky(x,y){let best=null,bd=1e9;
 
 // ---- état
 const M0=420,M1=1380,STEP=10,NM=(M1-M0)/STEP;
-const RADII=[200,400,700,1000,1500];
+const RADII=[200,400,700,1000,1500],WALK=80; // 80 m par minute de marche
 const now=new Date();
 let dYear=now.getFullYear(),dMonth=now.getMonth(),dDay=now.getDate();
 let selMin=Math.round((now.getHours()*60+now.getMinutes())/5)*5;
-let cat='all',fSun=true,fTer=false,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
+let cat='all',fSun=true,fTer=false,walkMin=10,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
 try{const s=JSON.parse(localStorage.getItem('terr-v2')||'{}');
-  if(RADII.includes(s.dist))dist=s.dist;if(s.from!=null&&PLACES[s.from])from=s.from;
+  if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
   if(['all','boire','manger'].includes(s.cat))cat=s.cat;if(s.fSun!=null)fSun=!!s.fSun;}catch(e){}
-function save(){try{localStorage.setItem('terr-v2',JSON.stringify({dist,from,cat,fSun}))}catch(e){}}
+function save(){try{localStorage.setItem('terr-v2',JSON.stringify({dist,from,cat,fSun,walkMin}))}catch(e){}}
 
 function sunAt(m){const s=sun(toUTC(dYear,dMonth,dDay,m));return s.el>.5*D2R?{dx:Math.sin(s.az),dy:Math.cos(s.az),te:Math.tan(s.el)}:null;}
 function elAt(m){return sun(toUTC(dYear,dMonth,dDay,m)).el;}
@@ -244,7 +244,7 @@ function renderCards(){
   if(!same){trayMode='cards';tray.replaceChildren(...els);if(sel)centerCard(sel,false);}
 }
 $('tray').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;
-  if(b.dataset.a==='wide'){dist=RADII[RADII.indexOf(dist)+1]||dist;save();goOverview();schedule(false);}
+  if(b.dataset.a==='wide'){dist=RADII.find(r=>r>dist)||dist;save();goOverview();schedule(false);}
   else{fSun=false;save();schedule(false);}});
 
 let prog=0,sT=0;
@@ -385,11 +385,6 @@ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let splashT=setTimeout(()=>showAsk(),reduced?500:3000);
 $('splash').addEventListener('click',()=>{clearTimeout(splashT);showAsk();});
 function showAsk(){$('askwhen').textContent=fmtDate()+' · '+hm(selMin);go('ask');}
-// bandeau de photos aériennes autour de la Place Nationale
-(function(){const trk=$('roll'),[cx,cy]=PLACES[0].slice(1);
-  const near=P.slice().sort((a,b)=>Math.hypot(a.x-cx,a.y-cy)-Math.hypot(b.x-cx,b.y-cy)).slice(0,14),mk=(p,k)=>{const d=document.createElement('div');d.className='bub';d.style.setProperty('--k',k);
-    const im=new Image();im.alt='';im.decoding='async';im.src='thumbs/t'+p.i+'.jpg';im.onerror=()=>{d.style.background='var(--sun-soft)';im.remove();};d.append(im,document.createElement('i'));return d;};
-  near.forEach((p,k)=>trk.appendChild(mk(p,k)));near.forEach((p,k)=>trk.appendChild(mk(p,k)));})();
 // tuiles : inclinaison au doigt, éclats de soleil au choix
 function burst(x,y,host){const cols=['#ffb000','#ffd36b','#ff7058','#ffffff','#ff9f80'];
   for(let i=0;i<18;i++){const s=document.createElement('span');s.className='spk';s.style.left=x+'px';s.style.top=y+'px';s.style.background=cols[i%cols.length];
@@ -403,12 +398,12 @@ document.querySelectorAll('.tile').forEach(b=>{
   b.addEventListener('pointerleave',()=>{art.style.setProperty('--ry','0deg');art.style.setProperty('--rx','0deg');});
   b.addEventListener('click',e=>{if(b.dataset.busy)return;b.dataset.busy=1;cat=b.dataset.c;save();
     const r=$('ask').getBoundingClientRect();burst(e.clientX-r.left,e.clientY-r.top,$('ask'));
-    setTimeout(()=>{delete b.dataset.busy;showTop5();},reduced?0:520);});
+    setTimeout(()=>{delete b.dataset.busy;openWalk();},reduced?0:420);});
 });
 
 // classement : soleil maintenant, durée du soleil à venir, proximité, terrasse signalée
 function topSpots(){
-  const [fx,fy]=PLACES[from].slice(1),k=clamp(Math.round((selMin-M0)/STEP),0,NM-1),out=[],R=700;
+  const [fx,fy]=PLACES[from].slice(1),k=clamp(Math.round((selMin-M0)/STEP),0,NM-1),out=[],R=walkMin*WALK;
   for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
     const st=stateAt(p,selMin);let j=k;if(st===2)while(j<NM&&p.day[j]===2)j++;
@@ -433,7 +428,9 @@ function spotCard(r,i){
 let t5List=[];
 async function renderTop5(){
   const box=$('t5list');
-  $('t5title').innerHTML=cat==='boire'?'Les 5 meilleurs<br><b>spots pour boire</b>':'Les 5 meilleurs<br><b>spots pour manger</b>';
+  const SUN='<span class="sunword"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.500"/><path d="M12 1.500v3.500M12 19v3.500M1.500 12H5M19 12h3.500M4.600 4.600l2.500 2.500M16.900 16.900l2.500 2.500M4.600 19.400l2.500-2.500M16.900 7.100l2.500-2.500"/></svg>au soleil</span>';
+  $('t5title').innerHTML=(cat==='boire'?'Bois un verre en terrasse ':'Mange en terrasse ')+SUN+' ici :';
+  $('walkChip').querySelector('span').textContent=walkMin+' min à pied max';
   $('t5sub').textContent=fmtDate()+' · '+hm(selMin)+' · ombres calculées en direct';
   $('wname2').textContent=PLACES[from][0];$('from2').value=from;
   if(!G){box.innerHTML='<div class="skel">Calcul des ombres sur le relief LiDAR…</div>';await READY;}
@@ -448,7 +445,7 @@ $('t5back').onclick=()=>showAsk();
 $('t5map').onclick=()=>{if(t5List.length)openMapOn(t5List[0].p);else openMapOn(null);};
 $('back').onclick=()=>{stopPlay();showTop5();};
 function openMapOn(p){
-  stopPlay();go(null);if(dist<700){dist=700;save();}layout();sel=p||null;filter();
+  stopPlay();go(null);dist=Math.max(150,walkMin*WALK);save();layout();sel=p||null;filter();
   if(p&&!RES.some(r=>r.p===p))sel=null;
   render(true,true);
   if(sel)select(sel,{zoom:3.2});else goOverview(500);
@@ -458,7 +455,7 @@ function openMapOn(p){
 PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.textContent=pl[0];$('from').appendChild(o);});
 $('from').value=from;
 $("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);};
-$('rad').onclick=()=>{dist=RADII[(RADII.indexOf(dist)+1)%RADII.length];save();goOverview(550);schedule(false);};
+$('rad').onclick=()=>{dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);};
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.c;save();schedule(false);});
 $('fSun').onclick=()=>{fSun=!fSun;save();schedule(false);};
 $('fTer').onclick=()=>{fTer=!fTer;schedule(false);};
@@ -510,3 +507,19 @@ async function locate(){
   },{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
 $('loc').addEventListener('click',locate);
+
+// ---- fenêtre « distance à pied »
+function walkTxt(m){const d=m*WALK;return '≈ '+(d<1000?d+' m':(d/1000).toFixed(1).replace('.',',')+' km');}
+function paintWalk(){const r=$('walkRange');r.value=walkMin;r.style.setProperty('--p',((walkMin-3)/17*100)+'%');
+  $('walkMin').textContent=walkMin;$('walkM').textContent=walkTxt(walkMin);
+  document.querySelectorAll('#walk .wc').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.m===walkMin));
+  $('walker').style.left=((walkMin-3)/17*100)+'%';}
+function openWalk(){$('walkWhat').textContent=cat==='boire'?'Pour boire un verre':'Pour manger dehors';paintWalk();
+  const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));$('walkRange').focus({preventScroll:true});}
+function closeWalk(){const w=$('walk');w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
+$('walkRange').addEventListener('input',e=>{walkMin=+e.target.value;paintWalk();});
+document.querySelectorAll('#walk .wc').forEach(b=>b.addEventListener('click',()=>{walkMin=+b.dataset.m;paintWalk();}));
+$('walkGo').onclick=()=>{save();closeWalk();if($('top5').classList.contains('on'))renderTop5();else showTop5();};
+$('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
+$('walkChip').onclick=openWalk;
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('walk').hidden)closeWalk();});
