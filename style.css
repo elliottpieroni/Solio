@@ -348,3 +348,5 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .sunner svg{fill:none;stroke:#ffb000;stroke-width:2}.sunner.go svg{animation:spin 1.2s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .wscale{display:none}
+
+.ver{position:fixed;right:8px;bottom:calc(2px + env(safe-area-inset-bottom,0px));font-size:9px;color:var(--muted);opacity:.5;pointer-events:none;z-index:1}

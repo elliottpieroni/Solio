@@ -384,7 +384,9 @@ function startPlay(){if(!G)return;playing=true;scrubbing=true;$('play').innerHTM
 $('play').onclick=()=>playing?stopPlay():startPlay();
 
 // ---- rendu
+let top5Mode=false;
 function filter(){
+  if(top5Mode){RES=topSpots().map(r=>{r.p.st=r.st;return{p:r.p,d:r.d,st:r.st};});return;}
   const [fx,fy]=PLACES[from].slice(1),list=[];
   for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;if(fTer&&!p.o)continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>dist)continue;const st=stateAt(p,selMin);p.st=st;if(fSun&&st!==2&&p!==sel)continue;list.push({p,d,st});}
@@ -468,6 +470,7 @@ document.querySelectorAll('.tile').forEach(b=>{
   b.addEventListener('pointerleave',()=>{art.style.setProperty('--ry','0deg');art.style.setProperty('--rx','0deg');});
   b.addEventListener('click',e=>{if(b.dataset.busy)return;b.dataset.busy=1;cat=b.dataset.c;save();
     const r=$('ask').getBoundingClientRect();burst(e.clientX-r.left,e.clientY-r.top,$('ask'));
+    locate(true);
     setTimeout(()=>{delete b.dataset.busy;openWalk();},reduced?0:420);});
 });
 
@@ -521,7 +524,7 @@ PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.tex
 $('from2').onchange=e=>{from=+e.target.value;$('from').value=from;save();renderTop5();};
 $('t5back').onclick=()=>showAsk();
 $('t5map').onclick=()=>{if(t5List.length)openMapOn(t5List[0].p);else openMapOn(null);};
-$('back').onclick=()=>{stopPlay();showTop5();};
+$('back').onclick=()=>{stopPlay();top5Mode=false;showAsk();};
 function openMapOn(p){
   stopPlay();go(null);dist=Math.max(150,walkMin*WALK);save();layout();sel=p||null;filter();
   if(p&&!RES.some(r=>r.p===p))sel=null;
@@ -533,9 +536,9 @@ function openMapOn(p){
 PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.textContent=pl[0];$('from').appendChild(o);});
 $('from').value=from;
 $("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);};
-$('rad').onclick=()=>{dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);};
-$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.c;save();schedule(false);});
-$('fSun').onclick=()=>{fSun=!fSun;save();schedule(false);};
+$('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);};
+$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
+$('fSun').onclick=()=>{top5Mode=false;fSun=!fSun;save();schedule(false);};
 $('fTer').onclick=()=>{fTer=!fTer;schedule(false);};
 $('grab').onclick=()=>setOpen(!listOpen);
 $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
@@ -560,46 +563,62 @@ setTimeout(async()=>{try{
   G={x0:L.x0,y1:L.y1,w:L.w,h:L.h,S,T,max:m};buildPlanRaster();
   for(const p of P)[p.sx,p.sy]=openSky(p.x,p.y);computeDay();
   layout();const [fx,fy]=PLACES[from].slice(1);scale=fitScale();[cxw,cyw]=focus(fx,fy,scale);
-  filter();render(true,false);readyRes();
+  filter();render(true,false);readyRes();locate(true);
 }catch(e){$('tray').innerHTML='<div class="empty"><b>Le relief n’a pas pu être chargé</b><span></span></div>';$('tray').querySelector('span').textContent=e.message;readyRes();}},250);
 
 // ---- Autour de moi (géolocalisation)
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),4200);}
 let MYIDX=-1;
-async function locate(){
-  if(!navigator.geolocation){toast('La localisation n’est pas disponible sur cet appareil.');return;}
+let locP=null,locWarned=false;
+function locate(auto){return locP=new Promise(done=>locateRun(auto,done));}
+async function locateRun(auto,done){
+  if(!navigator.geolocation){if(!auto)toast('La localisation n’est pas disponible sur cet appareil.');done(false);return;}
   const btn=$('loc');btn.classList.add('busy');await READY;
   navigator.geolocation.getCurrentPosition(pos=>{
     btn.classList.remove('busy');
     const x=(pos.coords.longitude-LON)*KX,y=(pos.coords.latitude-LAT)*KY;
     const inside=x>G.x0+30&&x<G.x0+G.w-30&&y<G.y1-30&&y>G.y1-G.h+30;
-    if(!inside){toast('Vous êtes hors de la zone couverte : le centre d’Antibes. Choisissez un point de départ dans la liste.');return;}
+    if(!inside){if(!auto||!locWarned){locWarned=true;toast('Vous êtes hors de la zone couverte (centre d’Antibes) : on part de la place Nationale.');}done(false);return;}
     if(MYIDX<0){MYIDX=PLACES.length;PLACES.push(['Ma position',x,y]);
       for(const id of ['from','from2']){const o=document.createElement('option');o.value=MYIDX;o.textContent='Ma position';$(id).appendChild(o);}}
     else PLACES[MYIDX]=['Ma position',x,y];
     from=MYIDX;$('from').value=from;$('from2').value=from;sel=null;
-    if($('top5').classList.contains('on'))renderTop5();else{goOverview(500);schedule(false);}
+    done(true);
+    if($('top5').classList.contains('on'))renderTop5();
+    else if(top5Mode&&!SCRS.some(x=>$(x).classList.contains('on')))openTop5Map(true);
+    else{goOverview(500);schedule(false);}
   },err=>{
-    btn.classList.remove('busy');
-    toast(err.code===1?'Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.');
+    btn.classList.remove('busy');done(false);
+    if(auto&&locWarned)return;locWarned=true;toast(err.code===1?'Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.');
   },{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
-$('loc').addEventListener('click',locate);
+$('loc').addEventListener('click',()=>locate(false));
 
 // ---- fenêtre « distance à pied »
 function walkTxt(m){const d=m*WALK;return '≈ '+(d<1000?d+' m':(d/1000).toFixed(1).replace('.',',')+' km');}
 function paintWalk(){const r=$('walkRange');r.value=walkMin;r.style.setProperty('--p',((walkMin-3)/17*100)+'%');
   $('walkMin').textContent=walkMin;
-  const sr=$('sunRange');sr.value=sunNeed;sr.style.setProperty('--p',((sunNeed-15)/105*100)+'%');$('sunV').textContent=sunNeed;
-  $('sunner').style.left='calc(17px + (100% - 34px) * '+((sunNeed-15)/105)+')';
+  const sr=$('sunRange');if(sr){sr.value=sunNeed;sr.style.setProperty('--p',((sunNeed-15)/105*100)+'%');$('sunV').textContent=sunNeed;
+  $('sunner').style.left='calc(17px + (100% - 34px) * '+((sunNeed-15)/105)+')';}
   $('walker').style.left='calc(17px + (100% - 34px) * '+((walkMin-3)/17)+')';}
 function openWalk(){$('walkWhat').textContent=cat==='boire'?'Pour boire un verre':'Pour manger dehors';paintWalk();
   const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));}
 function closeWalk(){const w=$('walk');w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
 let walkT=0,sunT=0;$('walkRange').addEventListener('input',e=>{const v=+e.target.value,wk=$('walker');wk.classList.toggle('back',v<walkMin);walkMin=v;paintWalk();
   wk.classList.add('go');clearTimeout(walkT);walkT=setTimeout(()=>wk.classList.remove('go'),420);});
-$('sunRange').addEventListener('input',e=>{sunNeed=+e.target.value;paintWalk();const sn=$('sunner');sn.classList.add('go');clearTimeout(sunT);sunT=setTimeout(()=>sn.classList.remove('go'),500);});
-$('walkGo').onclick=()=>{save();closeWalk();if($('top5').classList.contains('on'))renderTop5();else showTop5();};
+if($('sunRange'))$('sunRange').addEventListener('input',e=>{sunNeed=+e.target.value;paintWalk();const sn=$('sunner');sn.classList.add('go');clearTimeout(sunT);sunT=setTimeout(()=>sn.classList.remove('go'),500);});
+function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
+  dYear=n.getFullYear();dMonth=n.getMonth();dDay=n.getDate();selMin=Math.round((n.getHours()*60+n.getMinutes())/5)*5;
+  if(!sunAt(selMin)){night=true;if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
+  selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!P[0].day))computeDay();return night;}
+function openTop5Map(keep){
+  stopPlay();top5Mode=true;dist=Math.max(150,walkMin*WALK);save();go(null);layout();sel=null;filter();render(true,true);
+  if(RES.length){sel=RES[0].p;select(sel);}else{goOverview(500);toast('Aucune terrasse ensoleillée avec ces réglages : élargis la distance ou réduis les minutes de soleil.');}
+  if(GKEY&&!gpOff&&RES.length)gpEnsure(RES.map(r=>r.p)).then(ch=>{if(ch&&top5Mode){CARDS.clear();trayMode='';schedule(false);}});}
+$('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
+  try{night=resetNow();}catch(e){console.warn(e);}
+  try{if(MYIDX<0&&locP)await Promise.race([locP,new Promise(r=>setTimeout(r,2500))]);}catch(e){}
+  openTop5Map();if(night)toast('Le soleil est couché : on te montre demain à 12 h 30.');};
 $('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
 $('walkChip').onclick=openWalk;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('walk').hidden)closeWalk();});
