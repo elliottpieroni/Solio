@@ -4,7 +4,7 @@ const R2D=180/Math.PI,D2R=Math.PI/180,LAT=43.581,LON=7.124,KX=111320*Math.cos(LA
 const KIND={restaurant:'Restaurant',cafe:'Café',bar:'Bar',pub:'Pub',fast_food:'Restauration rapide',ice_cream:'Glacier'};
 const BOIRE=new Set(['bar','pub','cafe']);
 const PLACES=[['Place Nationale',136,27],['Marché provençal',288,-8],['Musée Picasso',343,-32],['Plage de la Gravette',401,190],['Port Vauban',376,640],['Place de Gaulle',-281,-48],['Place de la Poste',-105,70]];
-const P=PD.map(([n,k,x,y,o],i)=>({i,n,k,x,y,o}));
+const P=PD.map(([n,k,x,y,o],i)=>({i,n,k,x,y,o})).filter(p=>p.o); // seulement les lieux avec terrasse
 const sv=p=>'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+(LAT+p.y/KY).toFixed(6)+','+(LON+p.x/KX).toFixed(6);
 const nav=p=>'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination='+(LAT+p.y/KY).toFixed(6)+','+(LON+p.x/KX).toFixed(6);
 function lastSun(y,m){const d=new Date(Date.UTC(y,m+1,0));return d.getUTCDate()-d.getUTCDay();}
@@ -46,7 +46,7 @@ const RADII=[200,400,700,1000,1500],WALK=80; // 80 m par minute de marche
 const now=new Date();
 let dYear=now.getFullYear(),dMonth=now.getMonth(),dDay=now.getDate();
 let selMin=Math.round((now.getHours()*60+now.getMinutes())/5)*5;
-let cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
+let showShade=false,cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
 try{const s=JSON.parse(localStorage.getItem('terr-v2')||'{}');
   if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
   if(['all','boire','manger'].includes(s.cat))cat=s.cat;if(s.fSun!=null)fSun=!!s.fSun;if([15,30,45,60,75,90,105,120].includes(s.sunNeed))sunNeed=s.sunNeed;}catch(e){}
@@ -282,7 +282,7 @@ function makeCard(p){
   CARDS.set(p.i,el);return el;
 }
 function paintCard(el,p,d,st){
-  const [cls,txt]=pill(p,st),ck=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+(p.o?' · terrasse':'');
+  const [cls,txt]=pill(p,st),ck=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+' · terrasse';
   if(el._cls!==cls){el._cls=cls;el._pill.className='pill '+cls;el._mk.className='mk '+(st===2?'sun':'sh');}
   if(el._txt!==txt){el._txt=txt;el._ptxt.textContent=txt;}
   if(el._ckt!==ck){el._ckt=ck;el._ck.textContent=ck;}
@@ -293,7 +293,7 @@ function renderCards(){
   const tray=$('tray');
   if(!G){if(trayMode!=='skel'){trayMode='skel';tray.innerHTML='<div class="skel">Calcul des ombres sur le relief LiDAR…</div>';}return;}
   if(!RES.length){
-    const sig='empty'+dist+fSun+from+cat+fTer;if(trayMode===sig)return;trayMode=sig;
+    const sig='empty'+dist+fSun+from+cat;if(trayMode===sig)return;trayMode=sig;
     const [fn]=PLACES[from];
     const e=document.createElement('div');e.className='empty';
     e.innerHTML='<b></b><span></span><div class="erow"></div>';
@@ -387,9 +387,14 @@ $('play').onclick=()=>playing?stopPlay():startPlay();
 // ---- rendu
 let top5Mode=false;
 function filter(){
-  if(top5Mode){RES=topSpots(true).map(r=>{r.p.st=r.st;return{p:r.p,d:r.d,st:r.st};});return;}
+  if(top5Mode){RES=topSpots(true).map(r=>{r.p.st=r.st;return{p:r.p,d:r.d,st:r.st};});
+    if(showShade){const [fx,fy]=PLACES[from].slice(1),R=walkMin*WALK,sh=[];
+      for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
+        const st=stateAt(p,selMin);if(st!==1)continue;p.st=st;sh.push({p,d,st});}
+      sh.sort((a,b)=>a.d-b.d);RES=RES.concat(sh);}
+    return;}
   const [fx,fy]=PLACES[from].slice(1),list=[];
-  for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;if(fTer&&!p.o)continue;
+  for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>dist)continue;const st=stateAt(p,selMin);p.st=st;if(fSun&&st!==2&&p!==sel)continue;list.push({p,d,st});}
   list.sort((a,b)=>a.d-b.d);RES=list;
 }
@@ -404,7 +409,7 @@ function updateChrome(){
   $('sunspan').textContent=sunrise==null?'Pas de soleil ce jour-là':'Lever '+hm(sunrise)+' · coucher '+hm(sunset);
   $('wname').textContent=PLACES[from][0];$('rad').textContent=kmTxt(dist);
   $('cnt').textContent=G?RES.length:'–';
-  $('fSun').setAttribute('aria-pressed',fSun);$('fTer').setAttribute('aria-pressed',fTer);
+  $('fSun').setAttribute('aria-pressed',fSun);$('fShade').setAttribute('aria-pressed',showShade);
   $('seg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===cat));placeInd();
 }
 let lastCards=0;
@@ -500,7 +505,7 @@ function spotCard(r,i){
   if(GP[p.i]&&GP[p.i].u&&i===0){const cr=document.createElement('span');cr.className='gcred';cr.textContent='Photo © '+(GP[p.i].a||'contributeur')+' · Google';phEl.appendChild(cr);}
   el.querySelector('.rk').textContent=i===0?'N° 1 · meilleur spot':String(i+1);
   el.querySelector('.sn').textContent=p.n;
-  el.querySelector('.sk').textContent=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+(p.o?' · terrasse signalée':'');
+  el.querySelector('.sk').textContent=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+' · terrasse';
   const pl=el.querySelector('.pill');pl.classList.add(cls);el.querySelector('.ptxt').textContent=txt;
   el.addEventListener('click',()=>openMapOn(p));
   return el;
@@ -539,8 +544,8 @@ $('from').value=from;
 $("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);};
 $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);};
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
-$('fSun').onclick=()=>{top5Mode=false;fSun=!fSun;save();schedule(false);};
-$('fTer').onclick=()=>{fTer=!fTer;schedule(false);};
+$('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
+$('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedule(false);};
 $('grab').onclick=()=>setOpen(!listOpen);
 $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
   if(v.length===3&&v[0]){stopPlay();[dYear,dMonth,dDay]=[v[0],v[1]-1,v[2]];computeArc();if(G)computeDay();schedule(true);}};
