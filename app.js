@@ -144,10 +144,11 @@ function drawMap(){
   drawLabels(mx,w,h,cxw,cyw,scale);
   // rayon de recherche : l'extérieur s'efface
   const [fx,fy]=PLACES[from].slice(1),c=w2s(fx,fy),r=dist*scale,showR=sel&&route&&route.p===sel;
-  if(!showR){  mx.save();mx.beginPath();mx.rect(0,0,w,h);mx.arc(c[0],c[1],r,0,Math.PI*2);mx.fillStyle=TK.veil;mx.fill('evenodd');mx.restore();
+  {  mx.save();mx.beginPath();mx.rect(0,0,w,h);mx.arc(c[0],c[1],r,0,Math.PI*2);mx.fillStyle=TK.veil;mx.fill('evenodd');mx.restore();
   mx.save();mx.strokeStyle=TK.fg;mx.globalAlpha=.4;mx.lineWidth=1.25;mx.setLineDash([5,6]);mx.beginPath();mx.arc(c[0],c[1],r,0,Math.PI*2);mx.stroke();mx.restore();
-  mx.fillStyle=TK.fg;mx.strokeStyle=TK.bg;mx.lineWidth=2.5;mx.beginPath();mx.arc(c[0],c[1],5,0,Math.PI*2);mx.fill();mx.stroke();
-  }else drawRoute(mx);
+  mx.fillStyle='rgba(47,107,255,.22)';mx.beginPath();mx.arc(c[0],c[1],15,0,Math.PI*2);mx.fill();mx.fillStyle='#2f6bff';mx.strokeStyle='#fff';mx.lineWidth=3;mx.beginPath();mx.arc(c[0],c[1],7,0,Math.PI*2);mx.fill();mx.stroke();
+  }
+  if(showR)drawRoute(mx);
   // terrasses
   let onQ=null;
   for(const {p,st} of RES){const q=w2s(p.sx,p.sy);if(q[0]<-30||q[1]<-30||q[0]>w+30||q[1]>h+30)continue;
@@ -386,7 +387,7 @@ $('play').onclick=()=>playing?stopPlay():startPlay();
 // ---- rendu
 let top5Mode=false;
 function filter(){
-  if(top5Mode){RES=topSpots().map(r=>{r.p.st=r.st;return{p:r.p,d:r.d,st:r.st};});return;}
+  if(top5Mode){RES=topSpots(true).map(r=>{r.p.st=r.st;return{p:r.p,d:r.d,st:r.st};});return;}
   const [fx,fy]=PLACES[from].slice(1),list=[];
   for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;if(fTer&&!p.o)continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>dist)continue;const st=stateAt(p,selMin);p.st=st;if(fSun&&st!==2&&p!==sel)continue;list.push({p,d,st});}
@@ -475,7 +476,7 @@ document.querySelectorAll('.tile').forEach(b=>{
 });
 
 // classement : soleil maintenant, durée du soleil à venir, proximité, terrasse signalée
-function topSpots(){
+function topSpots(all){
   const [fx,fy]=PLACES[from].slice(1),k=clamp(Math.round((selMin-M0)/STEP),0,NM-1),out=[],R=walkMin*WALK;
   for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b)continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
@@ -483,7 +484,7 @@ function topSpots(){
     const sunMin=st===2?(j-k)*STEP:0;
     if(st!==2||sunMin<sunNeed)continue;
     out.push({p,d,st,sunMin,score:(st===2?1:0)+Math.min(sunMin,240)/240*.8+(1-d/R)*.5+(p.o?.15:0)});}
-  out.sort((a,b)=>b.score-a.score);return out.slice(0,5);
+  out.sort((a,b)=>b.score-a.score);return all?out:out.slice(0,5);
 }
 function spotCard(r,i){
   const {p,d,st}=r,[cls,txt]=pill(p,st);
@@ -612,8 +613,8 @@ function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
   if(!sunAt(selMin)){night=true;if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
   selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!P[0].day))computeDay();return night;}
 function openTop5Map(keep){
-  stopPlay();top5Mode=true;dist=Math.max(150,walkMin*WALK);save();go(null);layout();sel=null;filter();render(true,true);
-  if(RES.length){sel=RES[0].p;select(sel);}else{goOverview(500);toast('Aucune terrasse ensoleillée avec ces réglages : élargis la distance ou réduis les minutes de soleil.');}
+  stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);goOverview(keep?400:0);
+  if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
   if(GKEY&&!gpOff&&RES.length)gpEnsure(RES.map(r=>r.p)).then(ch=>{if(ch&&top5Mode){CARDS.clear();trayMode='';schedule(false);}});}
 $('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
   try{night=resetNow();}catch(e){console.warn(e);}
