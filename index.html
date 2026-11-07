@@ -144,13 +144,16 @@
       <div class="sh-grip" aria-hidden="true"></div>
       <div class="sh-top"><small id="walkWhat">–</small><button class="roundbtn" id="walkX" aria-label="Fermer"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <h3 id="walkT">Jusqu’où veux-tu marcher&nbsp;?</h3>
-      <div class="wread"><b id="walkMin">10</b><span>min à pied</span><em id="walkM">≈ 800 m</em></div>
+      <div class="wread"><b id="walkMin">10</b><span>min à pied</span></div>
       <div class="wtrack" aria-hidden="true">
         <span class="walker" id="walker"><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2.100" class="hd"/><path d="M12 7.200V14" class="bd"/><g class="lm l1"><path d="M12 8.600V13.600"/></g><g class="lm l2"><path d="M12 8.600V13.600"/></g><g class="lg g1"><path d="M12 14V21"/></g><g class="lg g2"><path d="M12 14V21"/></g></svg></span>
       </div>
       <input type="range" id="walkRange" min="3" max="20" step="1" value="10" aria-label="Minutes de marche maximum">
-      <div class="wscale" aria-hidden="true"><span>3 min</span><span>20 min</span></div>
-      <button class="cta" id="walkGo">Voir les 5 spots<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      <h3 class="h3b" id="sunT">Combien de min de soleil restantes au minimum&nbsp;?</h3>
+      <div class="wread w2"><b id="sunV">30</b><span>min de soleil</span></div>
+      <div class="wtrack" aria-hidden="true"><span class="walker sunner" id="sunner"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.500"/><path d="M12 1.500v3.500M12 19v3.500M1.500 12H5M19 12h3.500M4.600 4.600l2.500 2.500M16.900 16.900l2.500 2.500M4.600 19.400l2.500-2.500M16.900 7.100l2.500-2.500"/></svg></span></div>
+      <input type="range" id="sunRange" min="15" max="120" step="15" value="30" aria-label="Minutes de soleil restantes minimum">
+      <button class="cta" id="walkGo">Voir les 5 terrasses ensoleillées<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </section>
   </div>
 </div>
@@ -162,6 +165,7 @@
   <div class="row"><button id="lbPlan" aria-pressed="true">Plan et ombres</button><button id="lbPhoto" aria-pressed="false">Photo aérienne</button><button id="lbx">Fermer</button></div>
 </div>
 <script src="data.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 <script>if("serviceWorker"in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!window.__rl){window.__rl=1;location.reload();}});addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
 </body>
