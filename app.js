@@ -585,13 +585,12 @@ $('loc').addEventListener('click',locate);
 function walkTxt(m){const d=m*WALK;return '≈ '+(d<1000?d+' m':(d/1000).toFixed(1).replace('.',',')+' km');}
 function paintWalk(){const r=$('walkRange');r.value=walkMin;r.style.setProperty('--p',((walkMin-3)/17*100)+'%');
   $('walkMin').textContent=walkMin;$('walkM').textContent=walkTxt(walkMin);
-  document.querySelectorAll('#walk .wc').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.m===walkMin));
-  $('walker').style.left=((walkMin-3)/17*100)+'%';}
+  $('walker').style.left='calc(17px + (100% - 34px) * '+((walkMin-3)/17)+')';}
 function openWalk(){$('walkWhat').textContent=cat==='boire'?'Pour boire un verre':'Pour manger dehors';paintWalk();
-  const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));$('walkRange').focus({preventScroll:true});}
+  const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));}
 function closeWalk(){const w=$('walk');w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
-$('walkRange').addEventListener('input',e=>{walkMin=+e.target.value;paintWalk();});
-document.querySelectorAll('#walk .wc').forEach(b=>b.addEventListener('click',()=>{walkMin=+b.dataset.m;paintWalk();}));
+let walkT=0;$('walkRange').addEventListener('input',e=>{const v=+e.target.value,wk=$('walker');wk.classList.toggle('back',v<walkMin);walkMin=v;paintWalk();
+  wk.classList.add('go');clearTimeout(walkT);walkT=setTimeout(()=>wk.classList.remove('go'),420);});
 $('walkGo').onclick=()=>{save();closeWalk();if($('top5').classList.contains('on'))renderTop5();else showTop5();};
 $('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
 $('walkChip').onclick=openWalk;
