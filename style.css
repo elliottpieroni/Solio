@@ -167,7 +167,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .ask .sunbg{position:absolute;right:-70px;top:-70px;width:230px;height:230px;pointer-events:none;animation:spin 60s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .ask .cloud{position:absolute;pointer-events:none;opacity:.85;animation:drift 26s ease-in-out infinite alternate}
-.ask .cloud.c1{top:96px;left:-30px;width:110px}
+.ask .cloud.c1{top:88px;left:auto;right:34px;width:92px}
 .ask .cloud.c2{top:150px;right:-20px;width:80px;animation-duration:34s;animation-delay:-8s;opacity:.65}
 @keyframes drift{from{transform:translateX(0)}to{transform:translateX(46px)}}
 .ask .hd{position:relative;padding:22px var(--gutter-r) 0 var(--gutter-l)}
