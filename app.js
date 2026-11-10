@@ -399,6 +399,8 @@ function drawDial(){
   // curseur
   const tx=X(selMin);g.fillStyle='#fff';g.fillRect(tx-1,cy-9,2,18);
   dial.setAttribute('aria-valuenow',selMin);dial.setAttribute('aria-valuetext',hm(selMin));
+  {const sh=$('sunhrs'),out=[];if(sel&&sel.day){let k=0;while(k<NM){if(sel.day[k]===2){let j=k;while(j<NM&&sel.day[j]===2)j++;out.push(hm(M0+k*STEP)+' – '+hm(M0+j*STEP));k=j;}else k++;}}
+   if(sh){sh.hidden=!out.length;if(out.length)sh.querySelector('span').textContent=out.join('  ·  ');}}
 }
 function dialX(cx){const r=dial.getBoundingClientRect(),pad=2;
   selMin=clamp(Math.round((M0+(cx-r.left-pad)/(r.width-2*pad)*(M1-M0))/5)*5,M0,M1);schedule(true);}
@@ -725,7 +727,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v54',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v55',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};

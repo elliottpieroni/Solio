@@ -518,3 +518,12 @@ html[lang=en] .tbig i{font-size:34px;top:-2px}
 /* l'app va jusqu'au bord bas de l'écran (plus de bande vide sous le panneau) */
 :root{padding-bottom:0!important}
 .time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.6 + 4px)}
+
+/* v55 */
+.grab{display:none!important}
+.ver{display:none!important}
+.sunhrs{display:flex;align-items:center;gap:8px;margin:8px 0 0;font:600 13px var(--body);color:#fff;font-variant-numeric:tabular-nums}
+.sunhrs[hidden]{display:none}
+.sunhrs svg{width:18px;height:18px;flex:none;color:var(--sun);stroke:var(--sun);fill:none;stroke-width:2.2;stroke-linecap:round}
+#dial{height:24px}
+.time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.2 + 3px)}
