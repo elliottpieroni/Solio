@@ -312,7 +312,7 @@ function makeCard(p){
   img.onerror=()=>{if(pic&&th.classList.contains('has-photo')){th.classList.remove('has-photo');img.src=aer;}};th.appendChild(img);
   const m=document.createElement('span');m.className='mk sh';const span=80/1.8;
   m.style.left=(50+(p.sx-p.x)/span*100)+'%';m.style.top=(50-(p.sy-p.y)/span*100)+'%';th.appendChild(m);
-  th.onclick=e=>{e.stopPropagation();openLB(p);};
+  th.onclick=e=>{e.stopPropagation();openGal(p);};
   const ct=document.createElement('div');ct.className='ct';
   ct.innerHTML='<div class="cn"></div><div class="ck"></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div><div class="links"><a class="go" target="_blank" rel="noopener">Y aller ↗</a><a class="svl" target="_blank" rel="noopener">Street View ↗</a></div>';
   ct.querySelector('.cn').textContent=p.n;ct.querySelector('.go').href=nav(p);ct.querySelector('.svl').href=sv(p);
@@ -716,6 +716,7 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   GPERR='';const more=await gpPhotos(p);if(galP!==p)return;if(more.length){add(more);draw();}else{const g=[...sl.children].some(f=>/googleapis/.test(f.querySelector('img')&&f.querySelector('img').src||''));if(!g)$('galcr').textContent=GPERR||(GKEY?'Pas de photo Google pour ce lieu':'Clé Google absente');}}
 function closeGal(){$('gal').hidden=true;galP=null;}
 $('galx').onclick=closeGal;
+$('galplan').onclick=()=>{const p=galP;closeGal();if(p)openLB(p);};
 $('galmap').onclick=()=>{const p=galP;closeGal();if(!p)return;if($('top5').classList.contains('on'))openMapOn(p);else pick(p);};
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
