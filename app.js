@@ -671,7 +671,7 @@ function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
 function openTop5Map(keep){
   stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);goOverview(keep?400:0);
   if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
-  if(GKEY&&RES.length)mediaEnsure(RES.slice(0,15).map(r=>r.p)).then(ch=>{if(ch&&top5Mode){CARDS.clear();trayMode='';schedule(false);}});}
+  if(GKEY&&RES.length){const ps=RES.slice(0,30).map(r=>r.p);mediaEnsure(ps).then(()=>{for(const p of ps){const el=CARDS.get(p.i);if(!el)continue;const th=el.querySelector('.th'),im=th&&th.querySelector('img'),u=photoOf(p);if(im&&u&&im.getAttribute('src')!==u){th.classList.add('has-photo');im.src=u;}}if(top5Mode){CARDS.clear();trayMode='';schedule(false);}});}}
 $('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
   try{night=resetNow();}catch(e){console.warn(e);}
   try{if(MYIDX<0&&locP)await Promise.race([locP,new Promise(r=>setTimeout(r,2500))]);}catch(e){}
@@ -687,13 +687,14 @@ const visOf=p=>'visuels/v'+((BOIRE.has(p.k)?0:8)+(p.i*5+p.n.length)%8)+'.jpg';
 
 // ---- galerie photos du lieu (Google Maps)
 const GPL={};let galP=null;
+const gpNear=(pl,p)=>pl.location&&Math.hypot((pl.location.longitude-(LON+p.x/KX))*KX,(pl.location.latitude-(LAT+p.y/KY))*KY)<45;
 async function gpPhotos(p){if(GPL[p.i])return GPL[p.i];if(!GKEY)return GPL[p.i]=[];
   try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
-      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos'},
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos,places.location'},
       body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
     if(!r.ok)return[];
     const j=await r.json(),pl=(j.places||[])[0];
-    if(!pl||!gpSame(pl.displayName&&pl.displayName.text,p.n))return GPL[p.i]=[];
+    if(!pl||!(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p)))return GPL[p.i]=[];
     return GPL[p.i]=(pl.photos||[]).slice(0,10).map(ph=>({u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=900&key='+GKEY,a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''}));
   }catch(e){return[];}}
 async function openGal(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;sl.replaceChildren();sl.scrollLeft=0;
@@ -743,11 +744,11 @@ function gpSame(a,b){a=gpNorm(a).trim();b=gpNorm(b).trim();if(!a||!b)return fals
   const ta=a.split(/ +/).filter(t=>t.length>3),tb=b.split(/ +/).filter(t=>t.length>3);return ta.some(t=>tb.includes(t));}
 async function gpFetch(p){if(gpOff||gpOk(p)||gpBusy.has(p.i))return false;gpBusy.add(p.i);
   try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
-      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos'},
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos,places.location'},
       body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
     if(!r.ok){if(r.status===400||r.status===401||r.status===403)gpOff=true;console.warn('Google Places',r.status);return false;}
     const j=await r.json(),pl=(j.places||[])[0],ph=pl&&pl.photos&&pl.photos[0];
-    if(ph&&gpSame(pl.displayName&&pl.displayName.text,p.n))GP[p.i]={t:Date.now(),u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=800&key='+GKEY,
+    if(ph&&(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p)))GP[p.i]={t:Date.now(),u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=800&key='+GKEY,
         a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''};
     else GP[p.i]={t:Date.now()};
     try{localStorage.setItem('gp-v1',JSON.stringify(GP));}catch(e){}
