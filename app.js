@@ -317,7 +317,7 @@ function makeCard(p){
   ct.innerHTML='<div class="cn"></div><div class="ck"></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div><div class="links"><a class="go" target="_blank" rel="noopener">Y aller ↗</a><a class="svl" target="_blank" rel="noopener">Street View ↗</a></div>';
   ct.querySelector('.cn').textContent=p.n;ct.querySelector('.go').href=nav(p);ct.querySelector('.svl').href=sv(p);
   el.append(th,ct);el._mk=m;el._pill=ct.querySelector('.pill');el._ptxt=ct.querySelector('.ptxt');el._ck=ct.querySelector('.ck');
-  el.addEventListener('click',e=>{if(e.target.closest('a'))return;pick(p);});
+  el.addEventListener('click',e=>{if(e.target.closest('a'))return;openGal(p);});
   CARDS.set(p.i,el);return el;
 }
 function paintCard(el,p,d,st){
@@ -552,7 +552,7 @@ function spotCard(r,i){
   el.querySelector('.sn').textContent=p.n;
   el.querySelector('.sk').textContent=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+terrLabel(p);
   const pl=el.querySelector('.pill');pl.classList.add(cls);el.querySelector('.ptxt').textContent=txt;
-  el.addEventListener('click',()=>openMapOn(p));
+  el.addEventListener('click',()=>openGal(p));
   return el;
 }
 let t5List=[];
@@ -684,6 +684,38 @@ addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('walk').hidden)closeWalk(
 // ---- vraies photos des établissements (photos.json, produit par build_photos.py)
 var PHOTOS={};
 const visOf=p=>'visuels/v'+((BOIRE.has(p.k)?0:8)+(p.i*5+p.n.length)%8)+'.jpg';
+
+// ---- galerie photos du lieu (Google Maps)
+const GPL={};let galP=null;
+async function gpPhotos(p){if(GPL[p.i])return GPL[p.i];if(!GKEY)return GPL[p.i]=[];
+  try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos'},
+      body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
+    if(!r.ok)return[];
+    const j=await r.json(),pl=(j.places||[])[0];
+    if(!pl||!gpSame(pl.displayName&&pl.displayName.text,p.n))return GPL[p.i]=[];
+    return GPL[p.i]=(pl.photos||[]).slice(0,10).map(ph=>({u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=900&key='+GKEY,a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''}));
+  }catch(e){return[];}}
+async function openGal(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;sl.replaceChildren();sl.scrollLeft=0;
+  $('galn').textContent=p.n;const st=stateAt(p,selMin),[,txt]=pill(p,st);
+  $('galk').textContent=(KIND[p.k]||p.k)+' · '+txt;$('galgo').href=nav(p);$('galsv').href=sv(p);$('galcount').textContent='';$('galcr').textContent='';
+  const slides=[];
+  const svu=(svOk(p)&&SV[p.i].u)||null;if(svu)slides.push({u:svu,a:'',sv:1});
+  const add=l=>{for(const x of l)if(!slides.some(s=>s.u===x.u))slides.push(x);};
+  if(GP[p.i]&&GP[p.i].u)add([{u:GP[p.i].u,a:GP[p.i].a}]);
+  const draw=()=>{const list=slides.length?slides:[{u:PHOTOS[p.i]||visOf(p),a:'',fb:1}];
+    sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.src=s.u;
+      im.onerror=()=>{f.remove();upd();};f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
+  const upd=()=>{const fs=[...sl.children],w=sl.clientWidth||1,i=Math.min(fs.length-1,Math.round(sl.scrollLeft/w));
+    $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
+  sl.onscroll=upd;draw();
+  if(GKEY&&!svOk(p))svFetch(p).then(()=>{if(galP===p&&svOk(p)&&SV[p.i].u){add([]);slides.unshift({u:SV[p.i].u,a:'',sv:1});draw();}});
+  const more=await gpPhotos(p);if(galP===p&&more.length){add(more);draw();}}
+function closeGal(){$('gal').hidden=true;galP=null;}
+$('galx').onclick=closeGal;
+$('galmap').onclick=()=>{const p=galP;closeGal();if(!p)return;if($('top5').classList.contains('on'))openMapOn(p);else pick(p);};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
+
 // ---- photos Google Places (clé dans config.js)
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v1')||'{}');}catch(e){}
