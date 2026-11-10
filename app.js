@@ -717,18 +717,16 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
     sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.src=s.u;
       im.onerror=()=>{f.remove();upd();};f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
   const upd=()=>{const fs=[...sl.children],w=sl.clientWidth||1,i=Math.min(fs.length-1,Math.round(sl.scrollLeft/w));
-    $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
-  sl.onscroll=upd;draw();
+    $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';$('galprev').classList.toggle('off',fs.length<2||i<=0);$('galnext').classList.toggle('off',fs.length<2||i>=fs.length-1);$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
+  sl.onscroll=upd;draw();$('galprev').onclick=()=>sl.scrollBy({left:-sl.clientWidth,behavior:'smooth'});$('galnext').onclick=()=>sl.scrollBy({left:sl.clientWidth,behavior:'smooth'});
   if(GKEY&&!svOk(p))svFetch(p).then(()=>{if(galP===p&&svOk(p)&&SV[p.i].u){add([]);slides.unshift({u:SV[p.i].u,a:'',sv:1});draw();}});
   GPERR='';const more=await gpPhotos(p);if(galP!==p)return;if(more.length){add(more);draw();}else{const g=[...sl.children].some(f=>/googleapis/.test(f.querySelector('img')&&f.querySelector('img').src||''));if(!g)$('galcr').textContent=GPERR||(GKEY?'Pas de photo Google pour ce lieu':'Clé Google absente');}}
 function closeGal(){$('gal').hidden=true;galP=null;}
 $('galx').onclick=closeGal;
-$('galplan').onclick=()=>{const p=galP;closeGal();if(p)openLB(p);};
-$('galmap').onclick=()=>{const p=galP;closeGal();if(!p)return;if($('top5').classList.contains('on'))openMapOn(p);else pick(p);};
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v34',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v35',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
