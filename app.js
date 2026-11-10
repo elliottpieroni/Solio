@@ -721,6 +721,7 @@ $('galmap').onclick=()=>{const p=galP;closeGal();if(!p)return;if($('top5').class
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
+const APPV='v29',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -730,12 +731,13 @@ async function svFetch(p){if(svOff||svOk(p)||svBusy.has(p.i))return false;svBusy
   const lat=LAT+p.y/KY,lon=LON+p.x/KX,base='https://maps.googleapis.com/maps/api/streetview',key='&key='+GKEY;
   try{let u=null;
     try{const r=await fetch(base+'/metadata?location='+lat+','+lon+'&radius=60&source=outdoor'+key);
-      if(r.status===403||r.status===401){svOff=true;return false;}
+      if(r.status===403||r.status===401){svOff=true;diag('sv','SV '+r.status);return false;}
       const j=await r.json();
       if(j.status==='OK'){const dx=(lon-j.location.lng)*KX,dy=(lat-j.location.lat)*KY,h=Math.round((Math.atan2(dx,dy)*180/Math.PI+360)%360);
         u=base+'?size=480x360&pano='+encodeURIComponent(j.pano_id)+'&heading='+h+'&fov=75&pitch=6&source=outdoor&return_error_code=true'+key;}
-      else if(j.status==='REQUEST_DENIED'){svOff=true;return false;}
+      else if(j.status==='REQUEST_DENIED'){svOff=true;diag('sv','SV refusé');return false;}
     }catch(e){ u=base+'?size=480x360&location='+lat+','+lon+'&fov=85&pitch=6&source=outdoor&return_error_code=true'+key; }
+    if(u)diag('sv','SV ok');
     SV[p.i]=u?{t:Date.now(),u}:{t:Date.now()};
     try{localStorage.setItem('sv-v2',JSON.stringify(SV));}catch(e){}
     return !!u;
@@ -749,14 +751,15 @@ async function gpFetch(p){if(gpOff||gpOk(p)||gpBusy.has(p.i))return false;gpBusy
   try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
       headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos,places.location'},
       body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
-    if(!r.ok){if(r.status===400||r.status===401||r.status===403)gpOff=true;console.warn('Google Places',r.status);return false;}
+    if(!r.ok){if(r.status===400||r.status===401||r.status===403)gpOff=true;diag('gp','GP '+r.status);return false;}
     const j=await r.json(),pl=(j.places||[])[0],ph=pl&&pl.photos&&pl.photos[0];
     if(ph&&(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p)))GP[p.i]={t:Date.now(),u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=800&key='+GKEY,
         a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''};
     else GP[p.i]={t:Date.now()};
     try{localStorage.setItem('gp-v2',JSON.stringify(GP));}catch(e){}
+    if(GP[p.i].u)diag('gp','GP ok');
     return !!GP[p.i].u;
-  }catch(e){return false;}finally{gpBusy.delete(p.i);}}
+  }catch(e){diag('gp','GP réseau');return false;}finally{gpBusy.delete(p.i);}}
 async function gpEnsure(ps){const rs=await Promise.all(ps.map(gpFetch));return rs.some(Boolean);}
 fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
   PHOTOS=j||{};if(!Object.keys(PHOTOS).length)return;
