@@ -396,3 +396,6 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .galarr.prev{left:10px}.galarr.next{right:10px}
 .galarr:active{opacity:.9}.galarr.off{opacity:0;pointer-events:none}
 #play{display:none!important}
+.tmeta{flex-direction:row!important;align-items:flex-end!important;justify-content:space-between;gap:10px}
+.tmeta .datebtn{order:2;margin-left:auto}
+.tmeta .now{order:1}
