@@ -323,7 +323,7 @@ function makeCard(p){
   CARDS.set(p.i,el);return el;
 }
 function paintCard(el,p,d,st){
-  const [cls,txt]=pill(p,st),ck=(KIND[p.k]||p.k);
+  const [cls,txt]=pill(p,st),ck=(top5Mode&&RES.length&&RES[0].p===p?'N° 1 · ':'')+(KIND[p.k]||p.k);
   if(el._cls!==cls){el._cls=cls;el._mk.className='mk '+(st===2?'sun':'sh');}
   if(el._txt!==txt){el._txt=txt;sunParts(txt,el._sl,el._sb);}
   if(el._ckt!==ck){el._ckt=ck;el._ck.textContent=ck;}
@@ -389,27 +389,16 @@ function drawDial(){
   const W=dial.clientWidth,H=dial.clientHeight;if(!W)return;
   const dpr=devicePixelRatio||1;if(dial.width!==Math.round(W*dpr)||dial.height!==Math.round(H*dpr)){dial.width=Math.round(W*dpr);dial.height=Math.round(H*dpr);}
   const g=dial.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
-  const pad=14,y0=H-28,X=m=>pad+(m-M0)/(M1-M0)*(W-2*pad),top=12,aH=y0-8-top,Y=el=>y0-9-(Math.max(0,el)/maxEl)*aH;
-  // arc du soleil
-  g.lineCap='round';g.lineJoin='round';
-  g.strokeStyle=TK.fg;g.globalAlpha=.16;g.lineWidth=1.6;g.beginPath();
-  ARC.forEach((el,i)=>{const x=X(M0+i*STEP),y=Y(el);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();g.globalAlpha=1;
-  g.strokeStyle=TK.sun;g.lineWidth=3;g.beginPath();let started=false;
-  ARC.forEach((el,i)=>{const m=M0+i*STEP;if(m>selMin||el<=.5*D2R)return;const x=X(m),y=Y(el);started?g.lineTo(x,y):g.moveTo(x,y);started=true;});g.stroke();
-  // journée de la terrasse choisie (soleil, ombre, nuit), sinon durée du jour
-  const bx=X(M0),bw=X(M1)-bx;g.save();g.beginPath();g.roundRect(bx,y0,bw,6,3);g.clip();
-  if(sel&&sel.day){const cols=[TK.night,TK.shade,TK.sun];for(let k=0;k<NM;k++){g.fillStyle=cols[sel.day[k]];g.fillRect(X(M0+k*STEP),y0,(W-2*pad)/NM+.7,6);}}
-  else{g.fillStyle=TK.fg;g.globalAlpha=.1;g.fillRect(bx,y0,bw,6);g.globalAlpha=1;
-    if(sunrise!=null){g.fillStyle=TK.sun;g.globalAlpha=.55;g.fillRect(X(Math.max(M0,sunrise)),y0,X(Math.min(M1,sunset))-X(Math.max(M0,sunrise)),6);g.globalAlpha=1;}}
+  const pad=14,cy=Math.round(H/2),X=m=>pad+(m-M0)/(M1-M0)*(W-2*pad),bx=X(M0),bw=X(M1)-bx;
+  // frise du jour : soleil de la terrasse choisie (sinon durée du jour)
+  g.save();g.beginPath();g.roundRect(bx,cy-4,bw,8,4);g.clip();
+  g.fillStyle='rgba(255,255,255,.22)';g.fillRect(bx,cy-4,bw,8);
+  if(sel&&sel.day){g.fillStyle=TK.sun;for(let k=0;k<NM;k++){if(sel.day[k]===2)g.fillRect(X(M0+k*STEP),cy-4,(W-2*pad)/NM+.7,8);}}
+  else if(sunrise!=null){g.fillStyle=TK.sun;g.globalAlpha=.7;g.fillRect(X(Math.max(M0,sunrise)),cy-4,X(Math.min(M1,sunset))-X(Math.max(M0,sunrise)),8);g.globalAlpha=1;}
   g.restore();
-  // repères d'heures
-  g.fillStyle=TK.muted;g.font='500 11px "DM Sans",sans-serif';g.textAlign='center';g.textBaseline='alphabetic';
-  for(const h of [8,12,16,20]){g.fillText(LANG==='en'?h+':00':h+' h',X(h*60),H-4);}
   // curseur
-  const e=elAt(selMin),up=e>.5*D2R,tx=X(selMin),ty=up?Y(e):y0-9;
-  g.strokeStyle=TK.fg;g.globalAlpha=.3;g.lineWidth=1;g.beginPath();g.moveTo(tx,ty);g.lineTo(tx,y0+6);g.stroke();g.globalAlpha=1;
-  if(up){const gr=g.createRadialGradient(tx,ty,0,tx,ty,26);gr.addColorStop(0,'rgba(255,176,0,.55)');gr.addColorStop(1,'rgba(255,176,0,0)');g.fillStyle=gr;g.beginPath();g.arc(tx,ty,26,0,Math.PI*2);g.fill();}
-  g.fillStyle=up?TK.sun:TK.muted;g.strokeStyle=TK.bg;g.lineWidth=3;g.beginPath();g.arc(tx,ty,9,0,Math.PI*2);g.fill();g.stroke();
+  const tx=X(selMin);g.fillStyle='#fff';g.fillRect(tx-1,cy-9,2,18);
+  g.beginPath();g.arc(tx,cy,7,0,Math.PI*2);g.fillStyle='#fff';g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=6;g.fill();g.shadowBlur=0;
   dial.setAttribute('aria-valuenow',selMin);dial.setAttribute('aria-valuetext',hm(selMin));
 }
 function dialX(cx){const r=dial.getBoundingClientRect(),pad=14;
@@ -737,7 +726,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v51',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v52',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};

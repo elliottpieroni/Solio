@@ -495,3 +495,18 @@ html[lang=en] .tbig i{font-size:40px;font-weight:200;margin:0 1px;position:relat
 .panel.open .card{flex:none;width:100%;height:220px}
 .galinfo{background:rgba(24,17,6,.08);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .galshade.b{background:linear-gradient(to top,rgba(20,14,4,.58),transparent)}
+
+/* ===== design E : bandeau sombre + barre du haut en verre sombre ===== */
+.time{background:rgba(24,17,10,.66);-webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1);color:#fff;box-shadow:none;padding-top:14px}
+.tbig{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:42px;color:#fff;letter-spacing:0}
+.tbig i{font-size:17px;color:#ffffffd9;margin:0 4px}
+html[lang=en] .tbig i{font-size:34px;top:-2px}
+.tbig.night{color:#ffffff8c}
+.time .now{color:#fff;border-bottom-color:#fff}
+.time .datebtn{background:rgba(255,255,255,.16);color:#fff;border-color:transparent}
+#dial{height:34px}
+.top .glass,.roundbtn.glass,.zoom.glass{background:rgba(24,17,10,.55);border-color:transparent;color:#fff;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:none}
+.where .wt small{color:#ffffffb3}.where .wt b{color:#fff}
+.top .glass .i,.zoom button{color:#fff;stroke:currentColor}
+.zoom.glass button{color:#fff}
+.top .sunbtn.glass[aria-pressed="true"]{background:var(--sun);color:var(--sun-ink)}
