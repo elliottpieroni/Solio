@@ -637,6 +637,7 @@ let MYIDX=-1;
 let locP=null,locWarned=false;
 function locate(auto){return locP=new Promise(done=>locateRun(auto,done));}
 async function locateRun(auto,done){
+  if(auto&&typeof DEF_MIN==='number'){done(false);return;} // défaut provisoire : pas de géoloc automatique
   if(!navigator.geolocation){if(!auto)toast('La localisation n’est pas disponible sur cet appareil.');done(false);return;}
   const btn=$('loc');btn.classList.add('busy');await READY;
   navigator.geolocation.getCurrentPosition(async pos=>{
@@ -742,7 +743,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v59',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v60',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
