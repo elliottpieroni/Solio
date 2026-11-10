@@ -676,7 +676,8 @@ function thumbsFor(){if(!GKEY||!RES.length)return;const ps=RES.slice(0,30).map(r
   mediaEnsure(ps).then(()=>{for(const p of ps){const el=CARDS.get(p.i);if(!el)continue;const th=el.querySelector('.th'),im=th&&th.querySelector('img'),u=photoOf(p);if(im&&u&&im.getAttribute('src')!==u){th.classList.add('has-photo');im.src=u;}}
     if(top5Mode&&$('top5').classList.contains('on')){renderTop5();}});}
 function openTop5Map(keep){
-  stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);goOverview(keep?400:0);
+  stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);
+  if(RES.length){try{select(RES[0].p,{scroll:false});}catch(e){goOverview(keep?400:0);}}else goOverview(keep?400:0);
   if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
   thumbsFor();}
 $('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
@@ -733,7 +734,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v41',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v42',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
