@@ -543,3 +543,9 @@ html[lang=en] .tbig i{font-size:34px;top:-2px}
 .card .go{height:32px;padding:0 13px;font-size:12.5px}
 .card .ck{font-size:11.5px}
 .panel.open .card{height:200px}
+
+/* v58 */
+#app{top:env(safe-area-inset-top,0px)}
+#dial{height:128px;margin-top:-54px}
+.time{background:rgba(28,23,18,.88)}
+html:has(body:not(:has(.scr.on))),body:not(:has(.scr.on)){background:#1c1712}
