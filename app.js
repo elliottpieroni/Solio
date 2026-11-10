@@ -347,6 +347,7 @@ function renderCards(){
   for(const {p,d,st} of list){const el=CARDS.get(p.i)||makeCard(p);paintCard(el,p,d,st);els.push(el);}
   const same=trayMode==='cards'&&tray.children.length===els.length&&els.every((e,i)=>tray.children[i]===e);
   if(!same){trayMode='cards';tray.replaceChildren(...els);if(sel)centerCard(sel,false);}
+  thumbsFor();
 }
 $('tray').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;
   if(b.dataset.a==='wide'){dist=RADII.find(r=>r>dist)||dist;save();goOverview();schedule(false);}
@@ -668,10 +669,15 @@ function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
   dYear=n.getFullYear();dMonth=n.getMonth();dDay=n.getDate();selMin=Math.round((n.getHours()*60+n.getMinutes())/5)*5;
   if(!sunAt(selMin)){night=true;if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
   selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!SVS))computeDay();return night;}
+
+const THQ=new Set();
+function thumbsFor(){if(!GKEY||!RES.length)return;const ps=RES.slice(0,30).map(r=>r.p).filter(p=>!THQ.has(p.i));if(!ps.length)return;ps.forEach(p=>THQ.add(p.i));
+  mediaEnsure(ps).then(()=>{for(const p of ps){const el=CARDS.get(p.i);if(!el)continue;const th=el.querySelector('.th'),im=th&&th.querySelector('img'),u=photoOf(p);if(im&&u&&im.getAttribute('src')!==u){th.classList.add('has-photo');im.src=u;}}
+    if(top5Mode&&$('top5').classList.contains('on')){renderTop5();}});}
 function openTop5Map(keep){
   stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);goOverview(keep?400:0);
   if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
-  if(GKEY&&RES.length){const ps=RES.slice(0,30).map(r=>r.p);mediaEnsure(ps).then(()=>{for(const p of ps){const el=CARDS.get(p.i);if(!el)continue;const th=el.querySelector('.th'),im=th&&th.querySelector('img'),u=photoOf(p);if(im&&u&&im.getAttribute('src')!==u){th.classList.add('has-photo');im.src=u;}}if(top5Mode){CARDS.clear();trayMode='';schedule(false);}});}}
+  thumbsFor();}
 $('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
   try{night=resetNow();}catch(e){console.warn(e);}
   try{if(MYIDX<0&&locP)await Promise.race([locP,new Promise(r=>setTimeout(r,2500))]);}catch(e){}
@@ -707,7 +713,7 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   const svu=(svOk(p)&&SV[p.i].u)||null;if(svu)slides.push({u:svu,a:'',sv:1});
   const add=l=>{for(const x of l)if(!slides.some(s=>s.u===x.u))slides.push(x);};
   if(GP[p.i]&&GP[p.i].u)add([{u:GP[p.i].u,a:GP[p.i].a}]);
-  const draw=()=>{const list=slides.length?slides:[{u:PHOTOS[p.i]||visOf(p),a:'',fb:1}];
+  const draw=()=>{const list=slides.length?slides.filter(s=>!s.sv).concat(slides.filter(s=>s.sv)):[{u:PHOTOS[p.i]||visOf(p),a:'',fb:1}];
     sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.src=s.u;
       im.onerror=()=>{f.remove();upd();};f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
   const upd=()=>{const fs=[...sl.children],w=sl.clientWidth||1,i=Math.min(fs.length-1,Math.round(sl.scrollLeft/w));
@@ -722,7 +728,7 @@ $('galmap').onclick=()=>{const p=galP;closeGal();if(!p)return;if($('top5').class
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v32',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v34',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -743,8 +749,8 @@ async function svFetch(p){if(svOff||svOk(p)||svBusy.has(p.i))return false;svBusy
     try{localStorage.setItem('sv-v2',JSON.stringify(SV));}catch(e){}
     return !!u;
   }finally{svBusy.delete(p.i);}}
-async function mediaEnsure(ps){if(!GKEY)return false;const a=await Promise.all(ps.map(svFetch));const left=ps.filter(p=>!(SV[p.i]&&SV[p.i].u));const b=await gpEnsure(left);return a.some(Boolean)||b;}
-const photoOf=p=>(svOk(p)&&SV[p.i].u)||(GP[p.i]&&GP[p.i].u&&Date.now()-GP[p.i].t<GP_TTL?GP[p.i].u:null)||PHOTOS[p.i]||visOf(p);
+async function mediaEnsure(ps){if(!GKEY)return false;const a=await gpEnsure(ps);const left=ps.filter(p=>!(GP[p.i]&&GP[p.i].u));const b=await Promise.all(left.map(svFetch));return a||b.some(Boolean);}
+const photoOf=p=>(GP[p.i]&&GP[p.i].u&&Date.now()-GP[p.i].t<GP_TTL?GP[p.i].u:null)||(svOk(p)&&SV[p.i].u)||PHOTOS[p.i]||visOf(p);
 const gpNorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ');
 function gpSame(a,b){a=gpNorm(a).trim();b=gpNorm(b).trim();if(!a||!b)return false;if(a.includes(b)||b.includes(a))return true;
   const ta=a.split(/ +/).filter(t=>t.length>3),tb=b.split(/ +/).filter(t=>t.length>3);return ta.some(t=>tb.includes(t));}
