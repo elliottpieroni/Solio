@@ -281,7 +281,7 @@ function fly(tx,ty,sc,ms){
     if(k<1)requestAnimationFrame(step);else requestShadow(false);})(t0);
 }
 function layout(){const ar=$('app').getBoundingClientRect(),pr=$('panel').getBoundingClientRect(),tr=$('top').getBoundingClientRect();
-  cy0=((tr.bottom-ar.top)+(pr.top-ar.top))/2;}
+  cy0=((tr.bottom-ar.top)+(pr.top-ar.top))/2;const z=$('zoom');if(z){z.style.top='auto';z.style.transform='none';z.style.bottom=Math.round(ar.bottom-pr.top+12)+'px';}}
 function visH(){const pr=$('panel').getBoundingClientRect(),tr=$('top').getBoundingClientRect();return Math.max(200,pr.top-tr.bottom);}
 function fitScale(){return clamp(.46*Math.min(mc.clientWidth,visH())/dist,.35,5);}
 function goOverview(ms){const [fx,fy]=PLACES[from].slice(1);fly(fx,fy,fitScale(),ms);}
@@ -369,13 +369,16 @@ function select(p,o){o=o||{};sel=p;
   if(p&&o.fly!==false){if(route){fitRoute();revealRoute();}else fly(p.sx,p.sy,o.zoom||(scale<2?2.6:scale));}
   else if(route)routeProg=1;
   drawDial();drawMap();}
-let pst=1; // 0 replié, 1 normal, 2 liste
-function pick(p){if(pst!==1)setSt(1);select(p);}
-function setSt(s){pst=clamp(s,0,2);listOpen=pst===2;const pn=$('panel');pn.classList.toggle('open',pst===2);pn.classList.toggle('min',pst===0);
-  $('grab').setAttribute('aria-expanded',pst!==0);
-  $('grab').setAttribute('aria-label',pst===0?'Afficher les terrasses':pst===1?'Agrandir la liste':'Replier le panneau');
-  setTimeout(()=>{layout();if(pst&&sel)centerCard(sel,false);if(G){if(sel&&pst){if(route&&route.p===sel)fitRoute(350);else fly(sel.sx,sel.sy,scale,350);}else drawMap();requestShadow(false);}},60);}
-function setOpen(v){setSt(v?2:1);}
+let curH=0,NAT=0;
+function natH(){const p=$('panel'),had=p.classList.contains('sz');p.classList.remove('sz');const h=p.offsetHeight;if(had)p.classList.add('sz');return h;}
+const maxH=()=>Math.round($('app').clientHeight*.72);
+function setH(h,anim){const p=$('panel');if(!NAT)NAT=natH();h=clamp(Math.round(h),40,maxH());curH=h;
+  p.classList.toggle('anim',!!anim);p.classList.add('sz');p.style.setProperty('--ph',h+'px');
+  const mn=h<84,op=h>NAT+36;p.classList.toggle('min',mn);p.classList.toggle('open',op&&!mn);listOpen=op&&!mn;
+  $('grab').setAttribute('aria-label',mn?'Afficher les terrasses':'Ajuster la taille du panneau');
+  clearTimeout(setH.t);setH.t=setTimeout(()=>{layout();if(G){if(sel&&!mn){if(route&&route.p===sel)fitRoute(350);else fly(sel.sx,sel.sy,scale,350);}else drawMap();requestShadow(false);}},anim?300:120);}
+function pick(p){if(curH&&curH<84)setH(NAT,true);select(p);}
+function setOpen(v){setH(v?Math.min(maxH(),NAT+200):NAT,true);}
 function zoomBy(f){flightId++;scale=clamp(scale*f,.35,10);drawMap();requestShadow(false);}
 // ---- cadran solaire
 const dial=$('dial');
@@ -588,10 +591,13 @@ $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save()
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
 $('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
 $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedule(false);};
-$('grab').onclick=()=>{if(Date.now()<gSw)return;setSt(pst===0?1:pst===1?2:0);};
-let gY=null,gSw=0;
-$('grab').addEventListener('pointerdown',e=>{gY=e.clientY;});
-$('grab').addEventListener('pointerup',e=>{if(gY==null)return;const dy=e.clientY-gY;gY=null;if(Math.abs(dy)>24){gSw=Date.now()+300;setSt(pst+(dy<0?1:-1));}});
+(()=>{const gb=$('grab');let y0=null,h0=0,mv=0,t0=0;
+  gb.addEventListener('pointerdown',e=>{y0=e.clientY;mv=0;t0=Date.now();if(!NAT)NAT=natH();h0=curH||$('panel').offsetHeight;try{gb.setPointerCapture(e.pointerId);}catch(_){}});
+  gb.addEventListener('pointermove',e=>{if(y0==null)return;const dy=e.clientY-y0;mv=Math.max(mv,Math.abs(dy));if(mv>6)setH(h0-dy,false);});
+  const end=e=>{if(y0==null)return;const dy=e.clientY-y0;y0=null;
+    if(mv<=6){setH(curH&&curH<84?NAT:(curH>NAT+36?NAT:40),true);return;} // simple tap : replie / déplie
+    if(curH<84+20&&curH<NAT/2)setH(40,true);else if(Math.abs(curH-NAT)<28)setH(NAT,true);};
+  gb.addEventListener('pointerup',end);gb.addEventListener('pointercancel',end);})();
 $('zin').onclick=()=>zoomBy(1.4);$('zout').onclick=()=>zoomBy(1/1.4);
 $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
   if(v.length===3&&v[0]){stopPlay();[dYear,dMonth,dDay]=[v[0],v[1]-1,v[2]];computeArc();if(G)computeDay();schedule(true);}};
