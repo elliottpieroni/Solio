@@ -587,7 +587,8 @@ function openMapOn(p){
 // ---- contrôles
 PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.textContent=pl[0];$('from').appendChild(o);});
 $('from').value=from;
-$("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
+function selFirst(){try{render(true,true);if(RES.length){select(RES[0].p,{scroll:false});if(CARDS.get(RES[0].p.i))centerCard(RES[0].p,false);}else goOverview(500);}catch(e){goOverview(500);}}
+$("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(()=>{selFirst();}).catch(()=>{});};
 $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
 $('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
@@ -645,7 +646,7 @@ async function locateRun(auto,done){
     done(true);
     if($('top5').classList.contains('on'))renderTop5();
     else if(top5Mode&&!SCRS.some(x=>$(x).classList.contains('on')))openTop5Map(true);
-    else{goOverview(500);schedule(false);}
+    else{goOverview(500);schedule(false);selFirst();}
   },err=>{
     btn.classList.remove('busy');done(false);
     if(auto&&locWarned)return;locWarned=true;toast(err.code===1?'Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.');
@@ -734,7 +735,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v44',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v45',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
