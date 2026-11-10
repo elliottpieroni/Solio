@@ -133,11 +133,12 @@ function tiffFloats(buf,px){const dv=new DataView(buf);const n=dv.getUint16(8,tr
   for(let t=0;t<n;t++){const o=10+t*12;if(dv.getUint16(o,true)===273)so=dv.getUint32(o+8,true);}
   if(so<0||so+px*px*4>buf.byteLength)throw new Error('GeoTIFF inattendu');
   return new Float32Array(buf.slice(so,so+px*px*4));}
-async function wmsGrid(layer,i,j,px){
-  const u=GEO+'wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS='+layer+'&STYLES=&CRS=EPSG:4326&BBOX='+[lat(ty1(j)-TS),lon(tx0(i)),lat(ty1(j)),lon(tx0(i)+TS)].map(v=>v.toFixed(6)).join(',')+'&WIDTH='+px+'&HEIGHT='+px+'&FORMAT=image/geotiff';
-  const r=await fetchRetry(u);const ct=r.headers.get('content-type')||'';const b=await r.arrayBuffer();
-  if(!/tiff/i.test(ct))throw new Error('réponse IGN inattendue : '+new TextDecoder().decode(b.slice(0,160)));
-  return tiffFloats(b,px);}
+async function wmsGrid(layer,i,j,px){let err; // le serveur IGN refuse parfois une zone précise : on décale de ~20 cm et on réessaie
+  for(let k=0;k<6;k++){const e=k*2e-6;
+    const u=GEO+'wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS='+layer+'&STYLES=&CRS=EPSG:4326&BBOX='+[lat(ty1(j)-TS)+e,lon(tx0(i))+e,lat(ty1(j))+e,lon(tx0(i)+TS)+e].map(v=>v.toFixed(6)).join(',')+'&WIDTH='+px+'&HEIGHT='+px+'&FORMAT=image/geotiff';
+    try{const r=await fetch(u);if(!r.ok){err=new Error('HTTP '+r.status);await sleep(800*(k+1));continue;}
+      const ct=r.headers.get('content-type')||'';const b=await r.arrayBuffer();if(!/tiff/i.test(ct))throw new Error('réponse IGN inattendue');return tiffFloats(b,px);}catch(x){err=x;await sleep(800*(k+1));}}
+  throw err;}
 function encodeGrid(a,px){ // hauteur -> (h+10)*10, 0 = pas de donnée ; la mer sans mesure vaut 0 m ; delta par ligne
   const o=new Int16Array(px*px);let valid=0;
   for(let r=0;r<px;r++){let prev=0;for(let c=0;c<px;c++){const v=a[r*px+c];let e;
