@@ -692,12 +692,13 @@ async function gpPhotos(p){if(GPL[p.i])return GPL[p.i];if(!GKEY)return GPL[p.i]=
   try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
       headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos,places.location'},
       body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
-    if(!r.ok){let m='';try{m=((await r.json()).error||{}).message||'';}catch(_){}GPERR='Google Places : erreur '+r.status+(m?' – '+m.slice(0,90):'');return[];}
+    if(!r.ok){let m='';try{m=((await r.json()).error||{}).message||'';}catch(_){}diag('gp','GP '+r.status);GPERR='Google Places : erreur '+r.status+(m?' – '+m.slice(0,90):'');return[];}
     const j=await r.json(),pl=(j.places||[])[0];
-    if(!pl){GPERR='Aucun lieu trouvé sur Google Maps';return GPL[p.i]=[];}
-    if(!(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p)))return GPL[p.i]=[];
+    if(!pl){diag('gp','GP aucun lieu');GPERR='Aucun lieu trouvé sur Google Maps';return GPL[p.i]=[];}
+    if(!(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p))){diag('gp','GP nom ≠ '+((pl.displayName&&pl.displayName.text)||'?').slice(0,18));return GPL[p.i]=[];}
+    diag('gp','GP '+((pl.photos||[]).length)+' photos');
     return GPL[p.i]=(pl.photos||[]).slice(0,10).map(ph=>({u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=900&key='+GKEY,a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''}));
-  }catch(e){GPERR='Connexion à Google impossible ('+(e&&e.message||e)+')';return[];}}
+  }catch(e){diag('gp','GP réseau');GPERR='Connexion à Google impossible ('+(e&&e.message||e)+')';return[];}}
 async function openGal(p){try{return await openGal0(p);}catch(e){toast('Galerie : '+(e&&e.message||e));}}
 async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;sl.replaceChildren();sl.scrollLeft=0;
   $('galn').textContent=p.n;const st=stateAt(p,selMin),[,txt]=pill(p,st);
@@ -721,7 +722,7 @@ $('galmap').onclick=()=>{const p=galP;closeGal();if(!p)return;if($('top5').class
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v30',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v32',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -761,6 +762,7 @@ async function gpFetch(p){if(gpOff||gpOk(p)||gpBusy.has(p.i))return false;gpBusy
     return !!GP[p.i].u;
   }catch(e){diag('gp','GP réseau');return false;}finally{gpBusy.delete(p.i);}}
 async function gpEnsure(ps){const rs=await Promise.all(ps.map(gpFetch));return rs.some(Boolean);}
+setTimeout(()=>{try{if(!GKEY){diag('gp','clé Google absente');return;}const q=(PD&&P&&P[0])||null;if(q){delete GP[q.i];delete SV[q.i];gpFetch(q);svFetch(q);}else diag('gp','aucun lieu');}catch(e){diag('gp','err '+(e&&e.message));}},3500);
 fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
   PHOTOS=j||{};if(!Object.keys(PHOTOS).length)return;
   CARDS.clear();trayMode='';
