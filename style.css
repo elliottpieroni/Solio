@@ -459,3 +459,6 @@ html[lang=en] .tbig i{font-size:40px;font-weight:200;margin:0 1px;position:relat
 .chd .cn,.shd .sn{flex:0 1 auto;min-width:0}
 .ck,.sk{flex:none;padding:2px 9px;border-radius:999px;background:var(--chip);font-size:11.5px;font-weight:500;color:var(--muted)}
 .spot.first .shd{flex-direction:column;align-items:flex-start;gap:6px}.spot.first .sk{order:-1}
+
+.galinfo{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+.galinfo .galcr{position:absolute;left:var(--gutter-l);right:84px;bottom:calc(8px + env(safe-area-inset-bottom,0px));margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

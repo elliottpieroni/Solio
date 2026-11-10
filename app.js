@@ -713,7 +713,7 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   {const gn=$('galn'),w=p.n.split(' ');gn.textContent='';if(w.length<2)gn.textContent=p.n;else{let bi=1,bd=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(w.slice(0,i).join(' ').length-w.slice(i).join(' ').length);if(d<bd){bd=d;bi=i;}}gn.append(w.slice(0,bi).join(' '),document.createElement('br'),w.slice(bi).join(' '));}}const st=stateAt(p,selMin),[,txt]=pill(p,st);
   let wm=0;try{const [,fx,fy]=PLACES[from];wm=Math.max(1,Math.round(Math.hypot(p.sx-fx,p.sy-fy)*1.25/WALK));}catch(e){}
   $('galk').textContent=(KIND[p.k]||p.k)+(wm?' · '+wm+' min à pied':'');
-  {const m=/^(.*?)(\d{1,2}(?:\s?h\s?|:)\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent='';if(m){const hh=/(\d{1,2})(?:\s?h\s?|:)(\d{2})/.exec(m[2]);uv.append(hh[1]+(LANG==='en'?':':' h'),document.createElement('br'),hh[2]);}else uv.textContent=txt;uv.classList.toggle('sm',!m);
+  {const m=/^(.*?)(\d{1,2}(?:\s?h\s?|:)\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent='';if(m){const hh=/(\d{1,2})(?:\s?h\s?|:)(\d{2})/.exec(m[2]);uv.append(hh[1]+' h',document.createElement('br'),hh[2]);}else uv.textContent=txt;uv.classList.toggle('sm',!m);
    if(m&&!/^Soleil/.test($('galul').textContent))$('galul').textContent=m[1].trim();
    const bar=$('galbar');bar.replaceChildren();try{if(!p.day)dayFor(p);let k=0;while(k<NM){if(p.day[k]===2){let j=k;while(j<NM&&p.day[j]===2)j++;const e=document.createElement('i');e.style.left=(k/NM*100)+'%';e.style.width=((j-k)/NM*100)+'%';bar.appendChild(e);k=j;}else k++;}
    const u=document.createElement('u');u.style.left=(Math.max(0,Math.min(1,(selMin-M0)/(M1-M0)))*100)+'%';bar.appendChild(u);}catch(e){}}
@@ -735,7 +735,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v47',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v48',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -803,7 +803,7 @@ if(LANG==='en'){(()=>{
   const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
     if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.tile')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}
     if(r==null){r=core;for(const [re,t] of FR)r=r.replace(re,t);}return m[1]+r+m[3];};
-  const doText=n=>{const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
+  const doText=n=>{if(n.parentElement&&n.parentElement.closest&&n.parentElement.closest('#galuv'))return;const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
   const doAttr=e=>{for(const a of ['aria-label','title']){const v=e.getAttribute&&e.getAttribute(a);if(v){const r=tr(v);if(r!==v)e.setAttribute(a,r);}}};
   const walk=root=>{if(root.nodeType===3){if(!/^(SCRIPT|STYLE)$/.test((root.parentNode||{}).nodeName))doText(root);return;}if(root.nodeType!==1||/^(SCRIPT|STYLE|CANVAS)$/.test(root.nodeName))return;
     doAttr(root);const w=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){if(n.nodeType===3){if(!/^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName))doText(n);}else doAttr(n);}};
