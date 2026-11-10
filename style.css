@@ -385,3 +385,5 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .galbtn{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .galbtn a,.galbtn button{padding:11px 16px;border-radius:999px;border:1px solid #ffffff44;background:transparent;color:#fff;font:600 14px var(--body);text-decoration:none}
 .galbtn .primary{background:var(--sun);color:var(--sun-ink);border-color:transparent}
+
+#fShade,#rad,#sunspan{display:none!important}

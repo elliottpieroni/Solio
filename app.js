@@ -87,7 +87,7 @@ let selMin=Math.round((now.getHours()*60+now.getMinutes())/5)*5;
 let showShade=false,cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
 try{const s=JSON.parse(localStorage.getItem('terr-v2')||'{}');
   if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
-  if(['all','boire','manger'].includes(s.cat))cat=s.cat;if(s.fSun!=null)fSun=!!s.fSun;if([15,30,45,60,75,90,105,120].includes(s.sunNeed))sunNeed=s.sunNeed;}catch(e){}
+  if(['all','boire','manger'].includes(s.cat))cat=s.cat;if([15,30,45,60,75,90,105,120].includes(s.sunNeed))sunNeed=s.sunNeed;}catch(e){}
 function save(){try{localStorage.setItem('terr-v2',JSON.stringify({dist,from,cat,fSun,walkMin,sunNeed}))}catch(e){}}
 
 function sunAt(m){const s=sun(toUTC(dYear,dMonth,dDay,m));return s.el>.5*D2R?{dx:Math.sin(s.az),dy:Math.cos(s.az),te:Math.tan(s.el)}:null;}
@@ -283,7 +283,7 @@ function fly(tx,ty,sc,ms){
 function layout(){const ar=$('app').getBoundingClientRect(),pr=$('panel').getBoundingClientRect(),tr=$('top').getBoundingClientRect();
   cy0=((tr.bottom-ar.top)+(pr.top-ar.top))/2;const z=$('zoom');if(z){z.style.top='auto';z.style.transform='none';z.style.bottom=Math.round(ar.bottom-pr.top+12)+'px';}}
 function visH(){const pr=$('panel').getBoundingClientRect(),tr=$('top').getBoundingClientRect();return Math.max(200,pr.top-tr.bottom);}
-function fitScale(){return clamp(.46*Math.min(mc.clientWidth,visH())/dist,.35,5);}
+function fitScale(){return clamp(.46*Math.min(mc.clientWidth,visH())/dist,.18,5);}
 function goOverview(ms){const [fx,fy]=PLACES[from].slice(1);fly(fx,fy,fitScale(),ms);}
 
 // gestes : glisser, pincer, molette, toucher un point
@@ -291,7 +291,7 @@ const ptrs=new Map();let pinch0=null,moved=0;
 mc.addEventListener('pointerdown',e=>{flightId++;mc.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;
   if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:scale};}});
 mc.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);
-  if(ptrs.size===2&&pinch0){const [a,b]=[...ptrs.values()];scale=clamp(pinch0.s*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch0.d,.35,10);moved+=10;}
+  if(ptrs.size===2&&pinch0){const [a,b]=[...ptrs.values()];scale=clamp(pinch0.s*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch0.d,.18,10);moved+=10;}
   else if(ptrs.size===1){const dx=e.clientX-prev[0],dy=e.clientY-prev[1];moved+=Math.abs(dx)+Math.abs(dy);cxw-=dx/scale;cyw+=dy/scale;}
   drawMap();});
 function pointerUp(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;
@@ -301,7 +301,7 @@ function pointerUp(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);
     if(best)select(best);}}
 mc.addEventListener('pointerup',pointerUp);
 mc.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);pinch0=null;});
-mc.addEventListener('wheel',e=>{e.preventDefault();flightId++;scale=clamp(scale*(e.deltaY<0?1.2:1/1.2),.35,10);drawMap();requestShadow(false);},{passive:false});
+mc.addEventListener('wheel',e=>{e.preventDefault();flightId++;scale=clamp(scale*(e.deltaY<0?1.2:1/1.2),.18,10);drawMap();requestShadow(false);},{passive:false});
 
 // ---- cartes
 const CARDS=new Map();
@@ -340,7 +340,7 @@ function renderCards(){
     e.querySelector('span').textContent='Rayon de '+(dist<1000?dist+' m':(dist/1000).toString().replace('.',',')+' km')+' autour de '+fn+'. Déplacez le curseur de l’heure pour voir passer le soleil.';
     const row=e.querySelector('.erow');
     if(dist<RADII[RADII.length-1]){const b=document.createElement('button');b.className='chip';b.dataset.a='wide';b.textContent='Élargir le rayon';row.appendChild(b);}
-    if(fSun){const b=document.createElement('button');b.className='chip';b.dataset.a='shade';b.textContent='Afficher aussi l’ombre';row.appendChild(b);}
+    
     tray.replaceChildren(e);return;
   }
   const list=RES.slice(0,60),els=[];
@@ -379,7 +379,7 @@ function setH(h,anim){const p=$('panel');if(!NAT)NAT=natH();h=clamp(Math.round(h
   clearTimeout(setH.t);setH.t=setTimeout(()=>{layout();if(G){if(sel&&!mn){if(route&&route.p===sel)fitRoute(350);else fly(sel.sx,sel.sy,scale,350);}else drawMap();requestShadow(false);}},anim?300:120);}
 function pick(p){if(curH&&curH<84)setH(NAT,true);select(p);}
 function setOpen(v){setH(v?Math.min(maxH(),NAT+200):NAT,true);}
-function zoomBy(f){flightId++;scale=clamp(scale*f,.35,10);drawMap();requestShadow(false);}
+function zoomBy(f){flightId++;scale=clamp(scale*f,.18,10);drawMap();requestShadow(false);}
 // ---- cadran solaire
 const dial=$('dial');
 function drawDial(){
