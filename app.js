@@ -389,7 +389,7 @@ function drawDial(){
   const W=dial.clientWidth,H=dial.clientHeight;if(!W)return;
   const dpr=devicePixelRatio||1;if(dial.width!==Math.round(W*dpr)||dial.height!==Math.round(H*dpr)){dial.width=Math.round(W*dpr);dial.height=Math.round(H*dpr);}
   const g=dial.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
-  const pad=14,cy=Math.round(H/2),X=m=>pad+(m-M0)/(M1-M0)*(W-2*pad),bx=X(M0),bw=X(M1)-bx;
+  const pad=2,cy=Math.round(H/2),X=m=>pad+(m-M0)/(M1-M0)*(W-2*pad),bx=X(M0),bw=X(M1)-bx;
   // frise du jour : soleil de la terrasse choisie (sinon durée du jour)
   g.save();g.beginPath();g.roundRect(bx,cy-4,bw,8,4);g.clip();
   g.fillStyle='rgba(255,255,255,.22)';g.fillRect(bx,cy-4,bw,8);
@@ -398,10 +398,9 @@ function drawDial(){
   g.restore();
   // curseur
   const tx=X(selMin);g.fillStyle='#fff';g.fillRect(tx-1,cy-9,2,18);
-  g.beginPath();g.arc(tx,cy,7,0,Math.PI*2);g.fillStyle='#fff';g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=6;g.fill();g.shadowBlur=0;
   dial.setAttribute('aria-valuenow',selMin);dial.setAttribute('aria-valuetext',hm(selMin));
 }
-function dialX(cx){const r=dial.getBoundingClientRect(),pad=14;
+function dialX(cx){const r=dial.getBoundingClientRect(),pad=2;
   selMin=clamp(Math.round((M0+(cx-r.left-pad)/(r.width-2*pad)*(M1-M0))/5)*5,M0,M1);schedule(true);}
 dial.addEventListener('pointerdown',e=>{stopPlay();dial.setPointerCapture(e.pointerId);scrubbing=true;dialX(e.clientX);});
 dial.addEventListener('pointermove',e=>{if(scrubbing&&dial.hasPointerCapture(e.pointerId))dialX(e.clientX);});
@@ -726,7 +725,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v52',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v53',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
