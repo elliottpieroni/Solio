@@ -709,7 +709,7 @@ async function gpPhotos(p){if(GPL[p.i])return GPL[p.i];if(!GKEY)return GPL[p.i]=
   }catch(e){diag('gp','GP réseau');GPERR='Connexion à Google impossible ('+(e&&e.message||e)+')';return[];}}
 async function openGal(p){try{return await openGal0(p);}catch(e){toast('Galerie : '+(e&&e.message||e));}}
 async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;sl.replaceChildren();sl.scrollLeft=0;
-  $('galn').textContent=p.n;const st=stateAt(p,selMin),[,txt]=pill(p,st);
+  {const gn=$('galn'),w=p.n.split(' ');gn.textContent='';if(w.length<2)gn.textContent=p.n;else{let bi=1,bd=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(w.slice(0,i).join(' ').length-w.slice(i).join(' ').length);if(d<bd){bd=d;bi=i;}}gn.append(w.slice(0,bi).join(' '),document.createElement('br'),w.slice(bi).join(' '));}}const st=stateAt(p,selMin),[,txt]=pill(p,st);
   let wm=0;try{const [,fx,fy]=PLACES[from];wm=Math.max(1,Math.round(Math.hypot(p.sx-fx,p.sy-fy)*1.25/WALK));}catch(e){}
   $('galk').textContent=(KIND[p.k]||p.k)+(wm?' · '+wm+' min à pied':'');
   {const m=/^(.*?)(\d{1,2}(?:\s?h\s?|:)\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent=m?m[2]:txt;uv.classList.toggle('sm',!m);
@@ -734,7 +734,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v42',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v44',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
