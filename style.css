@@ -454,3 +454,8 @@ html[lang=en] .tbig i{font-size:40px;font-weight:200;margin:0 1px;position:relat
 .galsun b.sm{font-weight:500}
 .galinfo,.galbtn a,.galchip,.galsun small{font-family:'DM Sans',var(--body)}
 .galsun b{display:block;line-height:.98}
+
+.chd,.shd{display:flex;align-items:center;gap:8px;min-width:0}
+.chd .cn,.shd .sn{flex:0 1 auto;min-width:0}
+.ck,.sk{flex:none;padding:2px 9px;border-radius:999px;background:var(--chip);font-size:11.5px;font-weight:500;color:var(--muted)}
+.spot.first .shd{flex-direction:column;align-items:flex-start;gap:6px}.spot.first .sk{order:-1}

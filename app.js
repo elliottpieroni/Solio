@@ -314,14 +314,14 @@ function makeCard(p){
   m.style.left=(50+(p.sx-p.x)/span*100)+'%';m.style.top=(50-(p.sy-p.y)/span*100)+'%';th.appendChild(m);
   th.onclick=e=>{e.stopPropagation();openGal(p);};
   const ct=document.createElement('div');ct.className='ct';
-  ct.innerHTML='<div class="cn"></div><div class="ck"></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div><div class="links"><a class="go" target="_blank" rel="noopener">Y aller ↗</a><a class="svl" target="_blank" rel="noopener">Street View ↗</a></div>';
+  ct.innerHTML='<div class="chd"><div class="cn"></div><div class="ck"></div></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div><div class="links"><a class="go" target="_blank" rel="noopener">Y aller ↗</a><a class="svl" target="_blank" rel="noopener">Street View ↗</a></div>';
   ct.querySelector('.cn').textContent=p.n;ct.querySelector('.go').href=nav(p);ct.querySelector('.svl').href=sv(p);
   el.append(th,ct);el._mk=m;el._pill=ct.querySelector('.pill');el._ptxt=ct.querySelector('.ptxt');el._ck=ct.querySelector('.ck');
   el.addEventListener('click',e=>{if(e.target.closest('a'))return;openGal(p);});
   CARDS.set(p.i,el);return el;
 }
 function paintCard(el,p,d,st){
-  const [cls,txt]=pill(p,st),ck=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+terrLabel(p);
+  const [cls,txt]=pill(p,st),ck=(KIND[p.k]||p.k);
   if(el._cls!==cls){el._cls=cls;el._pill.className='pill '+cls;el._mk.className='mk '+(st===2?'sun':'sh');}
   if(el._txt!==txt){el._txt=txt;el._ptxt.textContent=txt;}
   if(el._ckt!==ck){el._ckt=ck;el._ck.textContent=ck;}
@@ -540,7 +540,7 @@ function topSpots(all){
 function spotCard(r,i){
   const {p,d,st}=r,[cls,txt]=pill(p,st);
   const el=document.createElement('button');el.className='spot stg'+(i===0?' first':'');el.style.setProperty('--i',i+2);
-  el.innerHTML='<div class="ph"><div class="im"><img alt="" decoding="async"><span class="mk"></span></div><span class="rk"></span></div><div class="sb"><div class="sn"></div><div class="sk"></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div></div>';
+  el.innerHTML='<div class="ph"><div class="im"><img alt="" decoding="async"><span class="mk"></span></div><span class="rk"></span></div><div class="sb"><div class="shd"><div class="sn"></div><div class="sk"></div></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div></div>';
   const img=el.querySelector('img'),aer=aerOf(p),pic=photoOf(p),phEl=el.querySelector('.ph');
   img.src=pic||aer;if(pic)phEl.classList.add('has-photo');
   img.onerror=()=>{if(pic&&phEl.classList.contains('has-photo')){phEl.classList.remove('has-photo');img.src=aer;}else img.style.display='none';};
@@ -551,7 +551,7 @@ function spotCard(r,i){
   if(GP[p.i]&&GP[p.i].u&&i===0&&photoOf(p)===GP[p.i].u){const cr=document.createElement('span');cr.className='gcred';cr.textContent='Photo © '+(GP[p.i].a||'contributeur')+' · Google';phEl.appendChild(cr);}
   el.querySelector('.rk').textContent=i===0?'N° 1 · meilleur spot':String(i+1);
   el.querySelector('.sn').textContent=p.n;
-  el.querySelector('.sk').textContent=(KIND[p.k]||p.k)+' · '+Math.round(d/10)*10+' m'+terrLabel(p);
+  el.querySelector('.sk').textContent=(KIND[p.k]||p.k);
   const pl=el.querySelector('.pill');pl.classList.add(cls);el.querySelector('.ptxt').textContent=txt;
   el.addEventListener('click',()=>openGal(p));
   return el;
@@ -735,7 +735,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v46',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v47',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
