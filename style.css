@@ -549,3 +549,7 @@ html[lang=en] .tbig i{font-size:34px;top:-2px}
 #dial{height:128px;margin-top:-54px}
 .time{background:rgba(28,23,18,.88)}
 html:has(body:not(:has(.scr.on))),body:not(:has(.scr.on)){background:#1c1712}
+
+/* v61 : design F — l'arc a sa propre bande sous l'heure (plus de chevauchement) */
+#dial{height:100px;margin-top:6px;position:relative;z-index:0}
+.time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.4 + 4px)}
