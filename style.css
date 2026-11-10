@@ -515,3 +515,6 @@ html[lang=en] .tbig i{font-size:34px;top:-2px}
 #dial{height:28px}
 .time{padding-top:12px;padding-bottom:calc(env(safe-area-inset-bottom,0px)*.5 + 2px)}
 .trow{gap:8px}
+/* l'app va jusqu'au bord bas de l'écran (plus de bande vide sous le panneau) */
+:root{padding-bottom:0!important}
+.time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.6 + 4px)}
