@@ -250,7 +250,7 @@ function revealRoute(){const id=++routeAnim;if(matchMedia('(prefers-reduced-moti
   routeProg=0;const t0=performance.now();(function st(t){if(id!==routeAnim)return;const k=Math.min(1,(t-t0-250)/900);routeProg=Math.max(0,1-Math.pow(1-k,3));drawMap();if(k<1)requestAnimationFrame(st);})(t0);}
 function fitRoute(ms){if(!route)return;const xs=route.pts.map(q=>q[0]),ys=route.pts.map(q=>q[1]);
   const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),dx=Math.max(60,x1-x0),dy=Math.max(60,y1-y0);
-  const sc=clamp(Math.min((mc.clientWidth-96)/dx,(visH()-120)/dy),.5,4.2);fly((x0+x1)/2,(y0+y1)/2,sc,ms);}
+  const sc=clamp(Math.min((mc.clientWidth-110)/dx,(visH()-150)/dy),.18,4.2);fly((x0+x1)/2,(y0+y1)/2,sc,ms);}
 function drawRoute(mx){
   const pts=route.pts.map(q=>w2s(q[0],q[1])),seg=[];let tot=0;
   for(let i=1;i<pts.length;i++){const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);seg.push(d);tot+=d;}
@@ -369,7 +369,7 @@ function select(p,o){o=o||{};sel=p;
   CARDS.forEach((el,i)=>el.classList.toggle('on',!!p&&p.i===i));
   if(p&&o.scroll!==false)centerCard(p,true);
   route=p?makeRoute(p):null;
-  if(p&&o.fly!==false){if(route){fitRoute();revealRoute();}else fly(p.sx,p.sy,o.zoom||(scale<2?2.6:scale));}
+  if(p&&o.fly!==false){layout();if(route){fitRoute();revealRoute();}else fly(p.sx,p.sy,o.zoom||(scale<2?2.6:scale));}
   else if(route)routeProg=1;
   drawDial();drawMap();}
 let curH=0,NAT=0;
@@ -589,7 +589,8 @@ function openMapOn(p){
 // ---- contrôles
 PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.textContent=pl[0];$('from').appendChild(o);});
 $('from').value=from;
-function selFirst(){try{render(true,true);if(RES.length){select(RES[0].p,{scroll:false});if(CARDS.get(RES[0].p.i))centerCard(RES[0].p,false);}else goOverview(500);}catch(e){goOverview(500);}}
+function refit(){setTimeout(()=>{try{layout();if(sel&&route&&!scrubbing)fitRoute(300);}catch(e){}},750);}
+function selFirst(){try{render(true,true);if(RES.length){select(RES[0].p,{scroll:false});refit();if(CARDS.get(RES[0].p.i))centerCard(RES[0].p,false);}else goOverview(500);}catch(e){goOverview(500);}}
 $("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(()=>{selFirst();}).catch(()=>{});};
 $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
@@ -680,7 +681,7 @@ function thumbsFor(){if(!GKEY||!RES.length)return;const ps=RES.slice(0,30).map(r
     if(top5Mode&&$('top5').classList.contains('on')){renderTop5();}});}
 function openTop5Map(keep){
   stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);
-  if(RES.length){try{select(RES[0].p,{scroll:false});}catch(e){goOverview(keep?400:0);}}else goOverview(keep?400:0);
+  if(RES.length){try{select(RES[0].p,{scroll:false});refit();}catch(e){goOverview(keep?400:0);}}else goOverview(keep?400:0);
   if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
   thumbsFor();}
 $('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
@@ -737,7 +738,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v56',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v57',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};

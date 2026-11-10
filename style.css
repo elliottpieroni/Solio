@@ -534,3 +534,12 @@ html[lang=en] .tbig i{font-size:34px;top:-2px}
 #dial{height:104px;margin-top:-48px;position:relative;z-index:0}
 .trow{position:relative;z-index:2}
 .time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.2 + 3px)}
+
+/* v57 : vignettes plus compactes */
+.card{flex:0 0 206px;height:256px}
+.card .cn{font-size:24px}
+.csun b{font-size:26px}
+.csun b.sm{font-size:15px}
+.card .go{height:32px;padding:0 13px;font-size:12.5px}
+.card .ck{font-size:11.5px}
+.panel.open .card{height:200px}
