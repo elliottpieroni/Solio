@@ -3,7 +3,7 @@ const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim
 const R2D=180/Math.PI,D2R=Math.PI/180,LAT=43.581,LON=7.124,KX=111320*Math.cos(LAT*D2R),KY=110574;
 const KIND={restaurant:'Restaurant',cafe:'Café',bar:'Bar',pub:'Pub',fast_food:'Restauration rapide',ice_cream:'Glacier'};
 const BOIRE=new Set(['bar','pub','cafe']);
-const PLACES=[['Place Nationale',136,27],['Marché provençal',288,-8],['Musée Picasso',343,-32],['Plage de la Gravette',401,190],['Port Vauban',376,640],['Place de Gaulle',-281,-48],['Place de la Poste',-105,70]];
+const PLACES=[['Place Nationale',136,27],['Marché provençal',288,-8],['Musée Picasso',343,-32],['Plage de la Gravette',401,190],['Port Vauban',376,640],['Place de Gaulle',-281,-48],['Place de la Poste',-105,70],...[['Juan-les-Pins',-1250,-1183],['Cap d’Antibes (la Garoupe)',387,-2930]].filter(([,x,y])=>ZIDX.tiles.some(([i,j])=>x>=ZIDX.x0+i*ZIDX.ts&&x<ZIDX.x0+(i+1)*ZIDX.ts&&y<=ZIDX.y1-j*ZIDX.ts&&y>ZIDX.y1-(j+1)*ZIDX.ts))];
 const P=PD.map(([n,k,x,y,o],i)=>({i,n,k,x,y,o}));
 // terrasse : OpenStreetMap, complété par terrasses.json (Google : 2 = confirmée, 1 = avis qui en parlent, 0 = pas de terrasse)
 let TERR={},MAN={};try{MAN=JSON.parse(localStorage.getItem('terr-manual')||'{}');}catch(e){}
@@ -13,6 +13,7 @@ const terrLabel=p=>MAN[p.i]===2||TERR[p.i]>0||p.o?' · terrasse':' · terrasse ?
 function openFrac(x,y){let n=0,o=0;for(let dy=-6;dy<=6;dy++)for(let dx=-6;dx<=6;dx++){if(dx*dx+dy*dy>36)continue;const X=x+dx,Y=y+dy,h=hS(X,Y);if(h===-1e9)continue;n++;if(h-hT(X,Y)<.8)o++;}return n?o/n:0;}
 fetch('terrasses.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{if(!j||!Object.keys(j).length)return;TERR=j;
   if(typeof G!=='undefined'&&G){CARDS.clear();trayMode='';if(top5Mode)filter();schedule(false);}}).catch(()=>{});
+const aerOf=p=>p.i<NTH?'thumbs/t'+p.i+'.jpg':visOf(p);
 const sv=p=>'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+(LAT+p.y/KY).toFixed(6)+','+(LON+p.x/KX).toFixed(6);
 const nav=p=>'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination='+(LAT+p.y/KY).toFixed(6)+','+(LON+p.x/KX).toFixed(6);
 function lastSun(y,m){const d=new Date(Date.UTC(y,m+1,0));return d.getUTCDate()-d.getUTCDay();}
@@ -31,22 +32,51 @@ function sun(t){
   const az=Math.atan2(Math.sin(ha),Math.cos(ha)*Math.sin(la)-Math.tan(dec)*Math.cos(la))+Math.PI;
   return{el,az};
 }
-let G=null;
-async function unpack(b64,w,h){
-  const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-  const buf=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
-  const d=new Int16Array(buf),o=new Float32Array(w*h);
-  for(let r=0;r<h;r++){let a=0;for(let c=0;c<w;c++){a+=d[r*w+c];o[r*w+c]=a/10-10;}}return o;
-}
-function hS(x,y){const c=(x-G.x0)|0,r=(G.y1-y)|0;if(c<0||r<0||c>=G.w||r>=G.h)return -1e9;return G.S[r*G.w+c];}
-function hT(x,y){const c=Math.min(G.w-1,Math.max(0,(x-G.x0)|0)),r=Math.min(G.h-1,Math.max(0,(G.y1-y)|0));return G.T[r*G.w+c];}
-function blocked(px,py,z0,dx,dy,te){const dmax=Math.min(450,(G.max-z0)/te);
+// ---- relief par tuiles de 512 m (zone/), chargées autour de l'utilisateur
+let G=null; // non nul dès que le relief autour du départ est prêt
+const ZONE={x0:ZIDX.x0,y1:ZIDX.y1,nx:ZIDX.nx,ny:ZIDX.ny,ts:ZIDX.ts,max:20};ZONE.w=ZONE.nx*ZONE.ts;ZONE.h=ZONE.ny*ZONE.ts;
+const TS=ZONE.ts,TA=new Array(ZONE.nx*ZONE.ny),TILES=new Map(),TLOAD=new Map(),ZSET=new Set(ZIDX.tiles.map(t=>t[0]+'_'+t[1]));
+const NTH=235; // les 235 premiers lieux ont une vue aérienne (thumbs/)
+const bbox=c=>{let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let i=0;i<c.length;i+=2){x0=Math.min(x0,c[i]);x1=Math.max(x1,c[i]);y0=Math.min(y0,c[i+1]);y1=Math.max(y1,c[i+1]);}return{c,x0,x1,y0,y1};};
+async function gunzip(buf){return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();}
+function unrow(d,off,n){for(let r=0;r<n;r++){let a=0;const o=off+r*n;for(let c=0;c<n;c++){a+=d[o+c];d[o+c]=a;}}}
+function loadTile(i,j){const k=i+'_'+j;if(TLOAD.has(k))return TLOAD.get(k);if(!ZSET.has(k))return Promise.resolve(null);
+  const pr=(async()=>{
+    const r=await fetch('zone/t_'+k+'.bin');if(!r.ok)throw new Error('tuile '+k);
+    const d=new Int16Array(await gunzip(await r.arrayBuffer())),T2=TS/2;
+    if(d.length!==TS*TS+T2*T2)throw new Error('tuile '+k+' incomplète');
+    unrow(d,0,TS);unrow(d,TS*TS,T2);
+    const t={i,j,k,x0:ZONE.x0+i*TS,y1:ZONE.y1-j*TS,S:d.subarray(0,TS*TS),T:d.subarray(TS*TS),b:[],c:null};
+    let mx=0;for(let q=0;q<t.S.length;q++)if(t.S[q]>mx)mx=t.S[q];ZONE.max=Math.max(ZONE.max,mx/10-10);
+    try{const rb=await fetch('zone/b_'+k+'.json');if(rb.ok)t.b=(await rb.json()).map(bbox);}catch(e){}
+    TA[j*ZONE.nx+i]=t;TILES.set(k,t);return t;
+  })().catch(e=>{TLOAD.delete(k);console.warn(e);return null;});
+  TLOAD.set(k,pr);return pr;}
+function hS(x,y){const c=Math.floor(x-ZONE.x0),r=Math.floor(ZONE.y1-y);if(c<0||r<0)return -1e9;const i=(c/TS)|0,j=(r/TS)|0;if(i>=ZONE.nx||j>=ZONE.ny)return -1e9;
+  const t=TA[j*ZONE.nx+i];if(!t)return -1e9;const v=t.S[(r-j*TS)*TS+(c-i*TS)];return v?v/10-10:-1e9;}
+function hT(x,y){const c=Math.min(ZONE.w-1,Math.max(0,Math.floor(x-ZONE.x0))),r=Math.min(ZONE.h-1,Math.max(0,Math.floor(ZONE.y1-y))),i=(c/TS)|0,j=(r/TS)|0;
+  const t=TA[j*ZONE.nx+i];if(!t)return 0;const v=t.T[((r-j*TS)>>1)*(TS/2)+((c-i*TS)>>1)];return v?v/10-10:0;}
+function blocked(px,py,z0,dx,dy,te){const dmax=Math.min(450,(ZONE.max-z0)/te);
   for(let d=1.5;d<dmax;d+=.7){const h=hS(px+dx*d,py+dy*d);if(h===-1e9)return false;if(h>z0+d*te)return true;}return false;}
 function openSky(x,y){let best=null,bd=1e9;
   for(let dy=-15;dy<=15;dy++)for(let dx=-15;dx<=15;dx++){const d=dx*dx+dy*dy;if(d>225||d>=bd)continue;const X=x+dx,Y=y+dy;
     if(hS(X,Y)-hT(X,Y)<.6&&hS(X+1,Y)-hT(X+1,Y)<1&&hS(X-1,Y)-hT(X-1,Y)<1&&hS(X,Y+1)-hT(X,Y+1)<1&&hS(X,Y-1)-hT(X,Y-1)<1){bd=d;best=[X,Y];}}
   return best||[x,y];}
-
+function tilesFor(cx,cy,R){const out=[],i0=Math.max(0,Math.floor((cx-R-ZONE.x0)/TS)),i1=Math.min(ZONE.nx-1,Math.floor((cx+R-ZONE.x0)/TS)),j0=Math.max(0,Math.floor((ZONE.y1-cy-R)/TS)),j1=Math.min(ZONE.ny-1,Math.floor((ZONE.y1-cy+R)/TS));
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(ZSET.has(i+'_'+j))out.push([i,j]);return out;}
+async function ensureArea(cx,cy,R){const miss=tilesFor(cx,cy,R).filter(([i,j])=>!TA[j*ZONE.nx+i]);if(!miss.length)return false;
+  await Promise.all(miss.map(([i,j])=>loadTile(i,j)));
+  prepPlaces();return true;}
+const areaR=()=>Math.max(dist,walkMin*WALK,500)+300;
+const needArea=()=>{const [x,y]=PLACES[from].slice(1);return ensureArea(x,y,areaR());};
+// un lieu est prêt quand sa tuile et ses voisines sont chargées : on calcule alors son ensoleillement
+function prepPlaces(){let n=0;
+  for(const p of P){if(p.day)continue;const i=Math.floor((p.x-ZONE.x0)/TS),j=Math.floor((ZONE.y1-p.y)/TS);
+    if(i<0||j<0||i>=ZONE.nx||j>=ZONE.ny||!TA[j*ZONE.nx+i])continue;
+    let ok=true;for(let a=-1;a<=1&&ok;a++)for(let b=-1;b<=1;b++){const I=i+a,J=j+b;if(I<0||J<0||I>=ZONE.nx||J>=ZONE.ny)continue;if(ZSET.has(I+'_'+J)&&!TA[J*ZONE.nx+I]){ok=false;break;}}
+    if(!ok||hS(p.x,p.y)===-1e9)continue;
+    [p.sx,p.sy]=openSky(p.x,p.y);p.pr=!p.o&&p.k!=='fast_food'&&openFrac(p.sx,p.sy)>=.4;dayFor(p);n++;}
+  return n;}
 
 // ---- état
 const M0=420,M1=1380,STEP=10,NM=(M1-M0)/STEP;
@@ -62,11 +92,11 @@ function save(){try{localStorage.setItem('terr-v2',JSON.stringify({dist,from,cat
 
 function sunAt(m){const s=sun(toUTC(dYear,dMonth,dDay,m));return s.el>.5*D2R?{dx:Math.sin(s.az),dy:Math.cos(s.az),te:Math.tan(s.el)}:null;}
 function elAt(m){return sun(toUTC(dYear,dMonth,dDay,m)).el;}
-function computeDay(){
-  const svs=[];for(let k=0;k<NM;k++)svs.push(sunAt(M0+k*STEP));
-  for(const p of P){const z=hT(p.sx,p.sy)+1.2,a=new Uint8Array(NM);
-    for(let k=0;k<NM;k++){const s=svs[k];a[k]=!s?0:blocked(p.sx,p.sy,z,s.dx,s.dy,s.te)?1:2;}p.day=a;}
-}
+let SVS=null;
+function dayFor(p){if(!SVS)SVS=Array.from({length:NM},(_,k)=>sunAt(M0+k*STEP));
+  const z=hT(p.sx,p.sy)+1.2,a=new Uint8Array(NM);
+  for(let k=0;k<NM;k++){const s=SVS[k];a[k]=!s?0:blocked(p.sx,p.sy,z,s.dx,s.dy,s.te)?1:2;}p.day=a;}
+function computeDay(){SVS=null;for(const p of P)if(p.day)dayFor(p);}
 function stateAt(p,m){if(m<M0){const s=sunAt(m);if(!s)return 0;return blocked(p.sx,p.sy,hT(p.sx,p.sy)+1.2,s.dx,s.dy,s.te)?1:2;}
   return p.day[Math.min(NM-1,Math.round((m-M0)/STEP))];}
 const hm=m=>Math.floor(m/60)+' h '+String(Math.round(m%60)).padStart(2,'0');
@@ -87,20 +117,19 @@ computeArc();
 
 // --- plan : bâtiments et voies IGN BD TOPO, mer et végétation tirées du LiDAR
 const ROADS=PLAN.r.map(([w,k,n,c])=>{let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let i=0;i<c.length;i+=2){x0=Math.min(x0,c[i]);x1=Math.max(x1,c[i]);y0=Math.min(y0,c[i+1]);y1=Math.max(y1,c[i+1]);}return{w,k,n,c,x0,x1,y0,y1};});
-const BLDG=PLAN.b.map(c=>{let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let i=0;i<c.length;i+=2){x0=Math.min(x0,c[i]);x1=Math.max(x1,c[i]);y0=Math.min(y0,c[i+1]);y1=Math.max(y1,c[i+1]);}return{c,x0,x1,y0,y1};});
 const LBL=(()=>{const best={};for(const r of ROADS){if(r.n<0||r.k)continue;const c=r.c;for(let i=0;i+3<c.length;i+=2){const L=Math.hypot(c[i+2]-c[i],c[i+3]-c[i+1]);if(!best[r.n]||L>best[r.n].L)best[r.n]={L,x:(c[i]+c[i+2])/2,y:(c[i+1]+c[i+3])/2,a:Math.atan2(-(c[i+3]-c[i+1]),c[i+2]-c[i])};}}
   return Object.entries(best).map(([n,v])=>{let a=v.a;if(a>Math.PI/2)a-=Math.PI;if(a<-Math.PI/2)a+=Math.PI;return{t:PLAN.n[n],x:v.x,y:v.y,a,L:v.L};});})();
-let PLANR=null;
 function rgb(c){const t=document.createElement('canvas').getContext('2d');t.fillStyle=c;t.fillRect(0,0,1,1);return t.getImageData(0,0,1,1).data;}
-function buildPlanRaster(){const w=G.w,h=G.h,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
-  g.fillStyle='#000';g.strokeStyle='#000';g.lineWidth=3;for(const b of BLDG){g.beginPath();for(let i=0;i<b.c.length;i+=2){const x=b.c[i]-G.x0,y=G.y1-b.c[i+1];i?g.lineTo(x,y):g.moveTo(x,y);}g.closePath();g.fill();g.stroke();}
-  const bm=g.getImageData(0,0,w,h).data,im=g.createImageData(w,h),d=im.data,sea=rgb(css('--sea')),park=rgb(css('--park'));
-  for(let i=0;i<w*h;i++){const o=i*4;let col=null;if(G.T[i]<.3&&G.S[i]<.6)col=sea;else if(G.S[i]-G.T[i]>2&&bm[o+3]<10)col=park;if(col){d[o]=col[0];d[o+1]=col[1];d[o+2]=col[2];d[o+3]=255;}}
-  g.clearRect(0,0,w,h);g.putImageData(im,0,0);PLANR=c;}
+function tilePlan(t){if(t.c)return t.c;const w=TS,T2=w/2,c=document.createElement('canvas');c.width=c.height=w;const g=c.getContext('2d');
+  g.fillStyle='#000';g.strokeStyle='#000';g.lineWidth=3;for(const b of t.b){g.beginPath();for(let i=0;i<b.c.length;i+=2){const x=b.c[i]-t.x0,y=t.y1-b.c[i+1];i?g.lineTo(x,y):g.moveTo(x,y);}g.closePath();g.fill();g.stroke();}
+  const bm=g.getImageData(0,0,w,w).data,im=g.createImageData(w,w),d=im.data,sea=rgb(css('--sea')),park=rgb(css('--park'));
+  for(let r=0;r<w;r++)for(let q=0;q<w;q++){const i=r*w+q,s=t.S[i];if(!s)continue;const S=s/10-10,T=t.T[(r>>1)*T2+(q>>1)]/10-10;let col=null;
+    if(T<.3&&S<.6)col=sea;else if(S-T>2&&bm[i*4+3]<10)col=park;if(col){const o=i*4;d[o]=col[0];d[o+1]=col[1];d[o+2]=col[2];d[o+3]=255;}}
+  g.clearRect(0,0,w,w);g.putImageData(im,0,0);t.c=c;return c;}
 function drawPlan(g,w,h,ccx,ccy,sc){
   const X=x=>w/2+(x-ccx)*sc,Y=y=>h/2-(y-ccy)*sc,vx0=ccx-w/2/sc-20,vx1=ccx+w/2/sc+20,vy0=ccy-h/2/sc-20,vy1=ccy+h/2/sc+20;
   g.fillStyle=css('--land');g.fillRect(0,0,w,h);
-  if(PLANR){g.imageSmoothingEnabled=sc<2;g.drawImage(PLANR,X(G.x0),Y(G.y1),G.w*sc,G.h*sc);g.imageSmoothingEnabled=true;}
+  g.imageSmoothingEnabled=sc<2;for(const t of TILES.values()){const x=X(t.x0),y=Y(t.y1),z=TS*sc;if(x>w||y>h||x+z<0||y+z<0)continue;g.drawImage(tilePlan(t),x,y,z+.6,z+.6);}g.imageSmoothingEnabled=true;
   const vis=ROADS.filter(r=>r.x1>vx0&&r.x0<vx1&&r.y1>vy0&&r.y0<vy1);
   g.lineCap='round';g.lineJoin='round';
   for(const pass of [0,1])for(const r of vis){const lw=Math.max(r.k?1:1.6,r.w*sc);
@@ -109,7 +138,8 @@ function drawPlan(g,w,h,ccx,ccy,sc){
     if(r.k&&pass){g.strokeStyle=css('--road-edge');g.setLineDash(r.k===2?[2,2]:[4,3]);g.lineWidth=Math.max(1.2,r.w*sc*.6);}
     g.beginPath();for(let i=0;i<r.c.length;i+=2){i?g.lineTo(X(r.c[i]),Y(r.c[i+1])):g.moveTo(X(r.c[i]),Y(r.c[i+1]));}g.stroke();g.setLineDash([]);}
   g.fillStyle=css('--bldg');g.strokeStyle=css('--bldg-edge');g.lineWidth=.7;
-  for(const b of BLDG){if(b.x1<vx0||b.x0>vx1||b.y1<vy0||b.y0>vy1)continue;g.beginPath();for(let i=0;i<b.c.length;i+=2){i?g.lineTo(X(b.c[i]),Y(b.c[i+1])):g.moveTo(X(b.c[i]),Y(b.c[i+1]));}g.closePath();g.fill();if(sc>1)g.stroke();}
+  for(const t of TILES.values()){if(t.x0>vx1||t.x0+TS<vx0||t.y1-TS>vy1||t.y1<vy0)continue;
+    for(const b of t.b){if(b.x1<vx0||b.x0>vx1||b.y1<vy0||b.y0>vy1)continue;g.beginPath();for(let i=0;i<b.c.length;i+=2){i?g.lineTo(X(b.c[i]),Y(b.c[i+1])):g.moveTo(X(b.c[i]),Y(b.c[i+1]));}g.closePath();g.fill();if(sc>1)g.stroke();}}
 }
 function drawLabels(g,w,h,ccx,ccy,sc){if(sc<1.4)return;
   g.font='500 '+(sc>4?12:11)+'px "DM Sans",sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineJoin='round';
@@ -138,7 +168,8 @@ function computeShadow(fast){
 }
 function requestShadow(fast){clearTimeout(shT);
   if(fast){computeShadow(true);drawMap();}
-  else shT=setTimeout(()=>{computeShadow(false);drawMap();},150);}
+  else shT=setTimeout(()=>{computeShadow(false);drawMap();
+    if(G&&!document.hidden)ensureArea(cxw,cyw,Math.hypot(mc.clientWidth,mc.clientHeight)/scale/2+250).then(c=>{if(c){filter();schedule(true);}}).catch(()=>{});},150);}
 
 let RES=[];
 function drawMap(){
@@ -277,7 +308,7 @@ const CARDS=new Map();
 function makeCard(p){
   const el=document.createElement('article');el.className='card';el.dataset.i=p.i;
   const th=document.createElement('button');th.className='th';th.setAttribute('aria-label','Agrandir la vue aérienne de '+p.n);
-  const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';const aer='thumbs/t'+p.i+'.jpg',pic=photoOf(p);img.src=pic||aer;if(pic)th.classList.add('has-photo');
+  const img=new Image();img.alt='';img.loading='lazy';img.decoding='async';const aer=aerOf(p),pic=photoOf(p);img.src=pic||aer;if(pic)th.classList.add('has-photo');
   img.onerror=()=>{if(pic&&th.classList.contains('has-photo')){th.classList.remove('has-photo');img.src=aer;}};th.appendChild(img);
   const m=document.createElement('span');m.className='mk sh';const span=80/1.8;
   m.style.left=(50+(p.sx-p.x)/span*100)+'%';m.style.top=(50-(p.sy-p.y)/span*100)+'%';th.appendChild(m);
@@ -397,12 +428,12 @@ let top5Mode=false;
 function filter(){
   if(top5Mode){RES=topSpots(true).map(r=>{r.p.st=r.st;return{p:r.p,d:r.d,st:r.st};});
     if(showShade){const [fx,fy]=PLACES[from].slice(1),R=walkMin*WALK,sh=[];
-      for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
+      for(const p of P){if(!p.day)continue;const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
         const st=stateAt(p,selMin);if(st!==1)continue;p.st=st;sh.push({p,d,st});}
       sh.sort((a,b)=>a.d-b.d);RES=RES.concat(sh);}
     return;}
   const [fx,fy]=PLACES[from].slice(1),list=[];
-  for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;
+  for(const p of P){if(!p.day)continue;const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>dist)continue;const st=stateAt(p,selMin);p.st=st;if(fSun&&st!==2&&p!==sel)continue;list.push({p,d,st});}
   list.sort((a,b)=>a.d-b.d);RES=list;
 }
@@ -439,7 +470,7 @@ function schedule(shadow){if(shadow)pendShadow=true;if(rf)return;
 let lbP=null,lbPlan=true;const lbImg=new Image();
 function openLB(p){lbP=p;$('lbn').textContent=p.n+' ↗';$('lbn').href=nav(p);$('lbsv').href=sv(p);
   const [,txt]=pill(p,stateAt(p,selMin));$('lbk').textContent=(KIND[p.k]||p.k)+' · '+txt+' · ombres à '+hm(selMin);setLB(lbPlan);
-  $('lb').hidden=false;lbImg.onload=drawLB;lbImg.src='thumbs/t'+p.i+'.jpg';if(lbImg.complete)drawLB();$('lbx').focus();}
+  $('lb').hidden=false;lbImg.onload=drawLB;lbImg.src=aerOf(p);if(lbImg.complete)drawLB();$('lbx').focus();}
 function drawLB(){if(!lbP)return;const cv=$('lbc'),w=cv.clientWidth,dpr=devicePixelRatio||1;cv.width=w*dpr;cv.height=w*dpr;const g=cv.getContext('2d');g.scale(dpr,dpr);
   const s=sunAt(selMin),k=w/80,p=lbP;
   if(!lbPlan){if(lbImg.complete&&lbImg.naturalWidth)g.drawImage(lbImg,0,0,w,w);}
@@ -491,7 +522,7 @@ document.querySelectorAll('.tile').forEach(b=>{
 // classement : soleil maintenant, durée du soleil à venir, proximité, terrasse signalée
 function topSpots(all){
   const [fx,fy]=PLACES[from].slice(1),k=clamp(Math.round((selMin-M0)/STEP),0,NM-1),out=[],R=walkMin*WALK;
-  for(const p of P){const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;
+  for(const p of P){if(!p.day)continue;const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
     const st=stateAt(p,selMin);let j=k;if(st===2)while(j<NM&&p.day[j]===2)j++;
     const sunMin=st===2?(j-k)*STEP:0;
@@ -503,10 +534,10 @@ function spotCard(r,i){
   const {p,d,st}=r,[cls,txt]=pill(p,st);
   const el=document.createElement('button');el.className='spot stg'+(i===0?' first':'');el.style.setProperty('--i',i+2);
   el.innerHTML='<div class="ph"><div class="im"><img alt="" decoding="async"><span class="mk"></span></div><span class="rk"></span></div><div class="sb"><div class="sn"></div><div class="sk"></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div></div>';
-  const img=el.querySelector('img'),aer='thumbs/t'+p.i+'.jpg',pic=photoOf(p),phEl=el.querySelector('.ph');
+  const img=el.querySelector('img'),aer=aerOf(p),pic=photoOf(p),phEl=el.querySelector('.ph');
   img.src=pic||aer;if(pic)phEl.classList.add('has-photo');
   img.onerror=()=>{if(pic&&phEl.classList.contains('has-photo')){phEl.classList.remove('has-photo');img.src=aer;}else img.style.display='none';};
-  if(pic&&i===0){const ins=document.createElement('span');ins.className='aer';const ai=new Image();ai.alt='';ai.src=aer;const am=document.createElement('span');am.className='mk '+(st===2?'sun':'sh');
+  if(pic&&i===0&&p.i<NTH){const ins=document.createElement('span');ins.className='aer';const ai=new Image();ai.alt='';ai.src=aer;const am=document.createElement('span');am.className='mk '+(st===2?'sun':'sh');
     const sp=80/1.8;am.style.left=(50+(p.sx-p.x)/sp*100)+'%';am.style.top=(50-(p.sy-p.y)/sp*100)+'%';ins.append(ai,am);phEl.appendChild(ins);}
   const mk=el.querySelector('.mk'),span=80;
   mk.className='mk '+(st===2?'sun':'sh');mk.style.left=(50+(p.sx-p.x)/span*100)+'%';mk.style.top=(50-(p.sy-p.y)/span*100)+'%';
@@ -535,7 +566,7 @@ async function renderTop5(){
 }
 function showTop5(){go('top5');renderTop5();}
 PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.textContent=pl[0];$('from2').appendChild(o);});
-$('from2').onchange=e=>{from=+e.target.value;$('from').value=from;save();renderTop5();};
+$('from2').onchange=async e=>{from=+e.target.value;$('from').value=from;save();try{await needArea();}catch(x){}renderTop5();};
 $('t5back').onclick=()=>showAsk();
 $('t5map').onclick=()=>{if(t5List.length)openMapOn(t5List[0].p);else openMapOn(null);};
 $('back').onclick=()=>{stopPlay();top5Mode=false;showAsk();};
@@ -549,8 +580,8 @@ function openMapOn(p){
 // ---- contrôles
 PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.textContent=pl[0];$('from').appendChild(o);});
 $('from').value=from;
-$("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);};
-$('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);};
+$("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
+$('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
 $('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
 $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedule(false);};
@@ -562,7 +593,7 @@ $('now').onclick=()=>{stopPlay();const n=new Date();[dYear,dMonth,dDay]=[n.getFu
   selMin=clamp(Math.round((n.getHours()*60+n.getMinutes())/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);};
 
 // ---- thème
-function themeChanged(){readTokens();if(G)buildPlanRaster();drawDial();if(G){schedule(true);if(lbP)drawLB();}}
+function themeChanged(){readTokens();for(const t of TILES.values())t.c=null;drawDial();if(G){schedule(true);if(lbP)drawLB();}}
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',themeChanged);
 new MutationObserver(themeChanged).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 let rz=0;
@@ -573,9 +604,7 @@ new ResizeObserver(()=>{layout();if(G)drawMap();}).observe($('panel'));
 $('play').innerHTML=ICON_PLAY;
 layout();updateChrome();drawDial();renderCards();
 setTimeout(async()=>{try{
-  const L=LIDAR,S=await unpack(L.s,L.w,L.h),T=await unpack(L.t,L.w,L.h);let m=0;for(const v of S)if(v>m)m=v;
-  G={x0:L.x0,y1:L.y1,w:L.w,h:L.h,S,T,max:m};buildPlanRaster();
-  for(const p of P){[p.sx,p.sy]=openSky(p.x,p.y);p.pr=!p.o&&p.k!=='fast_food'&&openFrac(p.sx,p.sy)>=.4;}computeDay();
+  await needArea();G={ready:true};
   layout();const [fx,fy]=PLACES[from].slice(1);scale=fitScale();[cxw,cyw]=focus(fx,fy,scale);
   filter();render(true,false);readyRes();locate(true);
 }catch(e){$('tray').innerHTML='<div class="empty"><b>Le relief n’a pas pu être chargé</b><span></span></div>';$('tray').querySelector('span').textContent=e.message;readyRes();}},250);
@@ -588,15 +617,16 @@ function locate(auto){return locP=new Promise(done=>locateRun(auto,done));}
 async function locateRun(auto,done){
   if(!navigator.geolocation){if(!auto)toast('La localisation n’est pas disponible sur cet appareil.');done(false);return;}
   const btn=$('loc');btn.classList.add('busy');await READY;
-  navigator.geolocation.getCurrentPosition(pos=>{
+  navigator.geolocation.getCurrentPosition(async pos=>{
     btn.classList.remove('busy');
     const x=(pos.coords.longitude-LON)*KX,y=(pos.coords.latitude-LAT)*KY;
-    const inside=x>G.x0+30&&x<G.x0+G.w-30&&y<G.y1-30&&y>G.y1-G.h+30;
-    if(!inside){if(!auto||!locWarned){locWarned=true;toast('Vous êtes hors de la zone couverte (centre d’Antibes) : on part de la place Nationale.');}done(false);return;}
+    const inside=tilesFor(x,y,250).length>0;
+    if(!inside){if(!auto||!locWarned){locWarned=true;toast('Vous êtes hors de la zone couverte (commune d’Antibes) : on part de la place Nationale.');}done(false);return;}
     if(MYIDX<0){MYIDX=PLACES.length;PLACES.push(['Ma position',x,y]);
       for(const id of ['from','from2']){const o=document.createElement('option');o.value=MYIDX;o.textContent='Ma position';$(id).appendChild(o);}}
     else PLACES[MYIDX]=['Ma position',x,y];
     from=MYIDX;$('from').value=from;$('from2').value=from;sel=null;
+    try{await needArea();}catch(e){console.warn(e);}
     done(true);
     if($('top5').classList.contains('on'))renderTop5();
     else if(top5Mode&&!SCRS.some(x=>$(x).classList.contains('on')))openTop5Map(true);
@@ -624,7 +654,7 @@ if($('sunRange'))$('sunRange').addEventListener('input',e=>{sunNeed=+e.target.va
 function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
   dYear=n.getFullYear();dMonth=n.getMonth();dDay=n.getDate();selMin=Math.round((n.getHours()*60+n.getMinutes())/5)*5;
   if(!sunAt(selMin)){night=true;if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
-  selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!P[0].day))computeDay();return night;}
+  selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!SVS))computeDay();return night;}
 function openTop5Map(keep){
   stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);goOverview(keep?400:0);
   if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
@@ -632,6 +662,7 @@ function openTop5Map(keep){
 $('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
   try{night=resetNow();}catch(e){console.warn(e);}
   try{if(MYIDX<0&&locP)await Promise.race([locP,new Promise(r=>setTimeout(r,2500))]);}catch(e){}
+  try{await Promise.race([needArea(),new Promise(r=>setTimeout(r,12000))]);}catch(e){console.warn(e);}
   openTop5Map();if(night)toast('Le soleil est couché : on te montre demain à 12 h 30.');};
 $('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
 $('walkChip').onclick=openWalk;

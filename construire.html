@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solio – construire la zone</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff8ec;--fg:#2b2217;--mut:#7a6a55;--acc:#ffb000;--card:#fff;--line:#eadfca}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1812;--fg:#f4ead8;--mut:#b3a58f;--card:#262017;--line:#3a3226}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif;padding:20px max(16px,env(safe-area-inset-left))}
+main{max-width:720px;margin:auto;display:grid;gap:14px}
+h1{font-size:22px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:11px 16px;background:var(--acc);color:#2b2217;cursor:pointer}
+button:disabled{opacity:.45;cursor:default}
+button.sec{background:transparent;border:1px solid var(--line);color:var(--fg)}
+progress{width:100%;height:10px;accent-color:var(--acc)}
+#log{font:12px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:260px;overflow:auto;color:var(--mut)}
+a.dl{display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:var(--acc);color:#2b2217;font-weight:600;text-decoration:none}
+label{display:flex;gap:8px;align-items:center}
+small{color:var(--mut)}
+</style>
+</head>
+<body>
+<main>
+<h1>Solio : construire la zone de toute la commune d’Antibes</h1>
+<div class="card">
+<p>Cet outil télécharge, <b>depuis ton navigateur</b>, le relief LiDAR HD de l’IGN, les bâtiments et les rues (BD TOPO) et les restaurants / cafés / bars (OpenStreetMap), puis les range en morceaux dans des fichiers <code>zone/…</code>.</p>
+<p>Laisse cet onglet ouvert (10 à 20 minutes). Si ça s’arrête, relance : ce qui est déjà fait est conservé.</p>
+<label><input type="checkbox" id="redo"> Tout refaire (ignorer ce qui est déjà conservé)</label>
+<p><button id="go">Construire</button></p>
+<progress id="bar" value="0" max="1"></progress>
+<div id="step"><small>Prêt.</small></div>
+</div>
+<div class="card"><div id="log"></div></div>
+<div class="card" id="out" hidden>
+<b>Terminé.</b> Télécharge chaque lot, décompresse-les tous dans un même dossier, puis envoie le contenu du dossier <code>zone</code> sur GitHub (glisser-déposer, un lot à la fois : 100 fichiers maximum par envoi).
+<div id="links"></div>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const LAT=43.581,LON=7.124,KX=111320*Math.cos(LAT*Math.PI/180),KY=110574;
+const TS=512,X0=-3752,Y1=5880,NX=12,NY=21,GEO='https://data.geopf.fr/';
+const MNS='IGNF_LIDAR-HD_MNS_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93',MNT='IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93';
+const NEAR=300; // un morceau est fabriqué s’il est à moins de 300 m d’un lieu
+const log=m=>{const l=$('log');l.textContent+=m+'\n';l.scrollTop=l.scrollHeight;};
+const step=(m,v)=>{$('step').innerHTML='<small>'+m+'</small>';if(v!=null)$('bar').value=v;};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const tx0=i=>X0+i*TS,ty1=j=>Y1-j*TS;
+const lon=x=>LON+x/KX,lat=y=>LAT+y/KY,fx=l=>(l-LON)*KX,fy=l=>(l-LAT)*KY;
+const r1=v=>Math.round(v*10)/10;
+
+// ---- conservation (IndexedDB) pour reprendre après une coupure
+let DB=null;
+function openDB(){return new Promise(res=>{try{const q=indexedDB.open('solio-zone',1);q.onupgradeneeded=()=>q.result.createObjectStore('f');q.onsuccess=()=>{DB=q.result;res()};q.onerror=()=>res();}catch(e){res()}});}
+const dbGet=k=>new Promise(res=>{if(!DB)return res(null);try{const q=DB.transaction('f').objectStore('f').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null)}});
+const dbPut=(k,v)=>new Promise(res=>{if(!DB)return res();try{const t=DB.transaction('f','readwrite');t.objectStore('f').put(v,k);t.oncomplete=()=>res();t.onerror=()=>res();}catch(e){res()}});
+const dbClear=()=>new Promise(res=>{if(!DB)return res();try{const t=DB.transaction('f','readwrite');t.objectStore('f').clear();t.oncomplete=()=>res();t.onerror=()=>res();}catch(e){res()}});
+
+async function fetchRetry(url,opt,tries=5){
+  let err;for(let k=0;k<tries;k++){try{const r=await fetch(url,opt);if(r.ok)return r;err=new Error('HTTP '+r.status);if(r.status===404||r.status===403)break;}catch(e){err=e;}await sleep(1500*(k+1));}
+  throw err;}
+async function pool(items,n,fn,onDone){let k=0,d=0;await Promise.all(Array.from({length:n},async()=>{while(k<items.length){const it=items[k++];await fn(it);d++;onDone&&onDone(d);}}));}
+async function gz(u8){const s=new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'));return new Uint8Array(await new Response(s).arrayBuffer());}
+
+// ---- lieux (OpenStreetMap)
+const KINDS=new Set(['restaurant','cafe','bar','pub','fast_food','ice_cream']);
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+async function buildPlaces(old){
+  const q='[out:json][timeout:180];area["name"="Antibes"]["boundary"="administrative"]["admin_level"="8"]->.a;(nwr(area.a)["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream)$"]["name"];);out center tags;';
+  const r=await fetchRetry('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)});
+  const j=await r.json();const out=old.map(p=>p.slice());let add=0,dup=0,off=0;
+  const byName=new Map();for(const p of out){const k=norm(p[0]);(byName.get(k)||byName.set(k,[]).get(k)).push(p);}
+  for(const e of j.elements){const t=e.tags||{};if(!KINDS.has(t.amenity)||!t.name)continue;
+    const la=e.lat??e.center?.lat,lo=e.lon??e.center?.lon;if(la==null)continue;
+    const x=r1(fx(lo)),y=r1(fy(la));
+    if(x<X0||x>X0+NX*TS||y>Y1||y<Y1-NY*TS){off++;continue;}
+    const same=(byName.get(norm(t.name))||[]).some(p=>Math.hypot(p[2]-x,p[3]-y)<80);
+    if(same){dup++;continue;}
+    const o=(t.outdoor_seating==='yes'||t.outdoor_seating==='terrace'||t.terrace==='yes'||t['outdoor_seating:terrace']==='yes')?1:0;
+    const p=[t.name,t.amenity,x,y,o];out.push(p);(byName.get(norm(t.name))||byName.set(norm(t.name),[]).get(norm(t.name))).push(p);add++;}
+  log('Lieux : '+old.length+' existants + '+add+' nouveaux ('+dup+' déjà connus, '+off+' hors zone).');
+  return out;}
+
+// ---- rues (BD TOPO)
+const ABBR={BD:'Boulevard',R:'Rue',AV:'Avenue',CHE:'Chemin',IMP:'Impasse',PL:'Place',TRA:'Traverse',TRAV:'Traverse',ALL:'Allée',MTE:'Montée',SQ:'Square',QU:'Quai',PROM:'Promenade',RTE:'Route',CRS:'Cours',PAS:'Passage',ESC:'Escalier',LOT:'Lotissement',RES:'Résidence',CHEM:'Chemin',VC:'Voie communale',CD:'Chemin départemental',BVD:'Boulevard',ST:'Saint',STE:'Sainte',DE:'de',DU:'du',DES:'des',LA:'la',LE:'le',LES:'les',D:'d’',L:'l’'};
+const WORDS=new Map(Object.entries({general:'Général',aout:'Août',decembre:'Décembre',eglise:'Église',liberation:'Libération',republique:'République',ecole:'École',pecheurs:'Pêcheurs',marechal:'Maréchal',theatre:'Théâtre',cathedrale:'Cathédrale',college:'Collège',lycee:'Lycée',hopital:'Hôpital',vallee:'Vallée',foret:'Forêt',chateau:'Château',eveque:'Évêque',chene:'Chêne',eglantiers:'Églantiers',allee:'Allée',montee:'Montée',residence:'Résidence',aerodrome:'Aérodrome',gare:'Gare',pins:'Pins',remparts:'Remparts',marche:'Marché',etoile:'Étoile',ecoles:'Écoles',hotel:'Hôtel',reine:'Reine',bastide:'Bastide',tilleuls:'Tilleuls',mediterranee:'Méditerranée',edouard:'Édouard',emile:'Émile',frederic:'Frédéric',andre:'André',rene:'René',jean:'Jean',pere:'Père',sevigne:'Sévigné',cezanne:'Cézanne',oliviers:'Oliviers',genevriers:'Genévriers',pecheur:'Pêcheur',peche:'Pêche',oratoire:'Oratoire',sylvain:'Sylvain'}));
+const SMALLW=new Set(['de','du','des','la','le','les','et','sur','en','aux','au','d','l']);
+function nice(s){if(!s)return null;const w=s.trim().toLowerCase().split(/\s+/);
+  const cap=p=>p.charAt(0).toUpperCase()+p.slice(1);
+  return w.map((x,i)=>{const up=x.toUpperCase();if(ABBR[up]&&(i===0||up==='ST'||up==='STE'))return ABBR[up];
+    const parts=x.split("'");
+    return parts.map((p,k)=>{if(k<parts.length-1&&(p==='d'||p==='l'))return p;return (i>0||k>0)&&SMALLW.has(p)?p:cap(p);}).join("\u2019");}).join(' ').replace(/\u2019 /g,'\u2019').replace(/ \u2019/g,'\u2019').split(' ').map(x=>x.split('\u2019').map(y=>{const k=norm(y);const a=WORDS.get(k);return a&&norm(a)===k?(y.charAt(0)===y.charAt(0).toLowerCase()?a.toLowerCase():a):y;}).join('\u2019')).join(' ');}
+async function wfs(type,bbox,onPage){
+  const out=[];let start=0;
+  for(;;){const u=GEO+'wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES='+type+'&COUNT=3000&STARTINDEX='+start+'&SORTBY=cleabs&OUTPUTFORMAT=application/json&BBOX='+bbox.map(v=>v.toFixed(6)).join(',')+',EPSG:4326';
+    const j=await (await fetchRetry(u)).json();const f=j.features||[];out.push(...f);if(f.length<3000)break;start+=3000;}
+  return out;}
+const flat=(c,dec=1)=>{const o=[];for(const p of c){o.push(r1(fx(p[0])),r1(fy(p[1])));}return o;};
+async function buildRoads(tiles,prog){
+  const names=[],nmap=new Map(),roads=[],seen=new Set();
+  const nameIdx=n=>{if(!n)return -1;let i=nmap.get(n);if(i==null){i=names.length;names.push(n);nmap.set(n,i);}return i;};
+  // une requête par bloc de 2x2 morceaux
+  const blocks=new Set();for(const [i,j] of tiles)blocks.add((i>>1)+'_'+(j>>1));
+  let k=0;
+  for(const b of blocks){const [bi,bj]=b.split('_').map(Number);
+    const xa=tx0(bi*2)-60,xb=tx0(bi*2+2)+60,yb=ty1(bj*2)+60,ya=ty1(bj*2+2)-60;
+    const feats=await wfs('BDTOPO_V3:troncon_de_route',[lon(xa),lat(ya),lon(xb),lat(yb)]);
+    for(const f of feats){const p=f.properties||{};if(seen.has(p.cleabs))continue;seen.add(p.cleabs);
+      const nat=p.nature||'';if(p.fictif===true||p.fictif==='true')continue;if(/Bac|liaison maritime|autoroutier/i.test(nat))continue;
+      if(p.etat_de_l_objet&&p.etat_de_l_objet!=='En service')continue;if(p.acces_pieton==='Aucun')continue;
+      let w=parseFloat(p.largeur_de_chaussee)||0,kk=0;
+      if(/Escalier/i.test(nat)){w=2;kk=2;}else if(/Sentier/i.test(nat)){w=1.5;kk=1;}else if(/Chemin/i.test(nat)){w=w||2.5;}else if(/Piste cyclable/i.test(nat)){w=2;kk=1;}else w=w||({1:7,2:6,3:5,4:4,5:3}[p.importance]||3.5);
+      const g=f.geometry;if(!g)continue;const lines=g.type==='MultiLineString'?g.coordinates:[g.coordinates];
+      for(const ln of lines){if(ln.length<2)continue;roads.push([w,kk,nameIdx(nice(p.nom_collaboratif_gauche||p.nom_collaboratif_droite)),flat(ln)]);}}
+    prog(++k/blocks.size);}
+  log('Rues : '+roads.length+' tronçons, '+names.length+' noms.');
+  return{n:names,r:roads};}
+
+// ---- bâtiments (BD TOPO), un fichier par morceau
+async function buildBuildings(i,j){
+  const xa=tx0(i)-3,xb=tx0(i)+TS+3,yb=ty1(j)+3,ya=ty1(j)-TS-3;
+  const feats=await wfs('BDTOPO_V3:batiment',[lon(xa),lat(ya),lon(xb),lat(yb)]);const out=[];
+  for(const f of feats){const g=f.geometry;if(!g)continue;const polys=g.type==='MultiPolygon'?g.coordinates:[g.coordinates];
+    for(const pg of polys){const ring=pg[0];if(!ring||ring.length<4)continue;const c=flat(ring.slice(0,-1));
+      let a=0;for(let q=0;q<c.length;q+=2){const n=(q+2)%c.length;a+=c[q]*c[n+1]-c[n]*c[q+1];}if(Math.abs(a)/2<4)continue;out.push(c);}}
+  return out;}
+
+// ---- relief (LiDAR HD)
+function tiffFloats(buf,px){const dv=new DataView(buf);const n=dv.getUint16(8,true);let so=-1;
+  for(let t=0;t<n;t++){const o=10+t*12;if(dv.getUint16(o,true)===273)so=dv.getUint32(o+8,true);}
+  if(so<0||so+px*px*4>buf.byteLength)throw new Error('GeoTIFF inattendu');
+  return new Float32Array(buf.slice(so,so+px*px*4));}
+async function wmsGrid(layer,i,j,px){
+  const u=GEO+'wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS='+layer+'&STYLES=&CRS=EPSG:4326&BBOX='+[lat(ty1(j)-TS),lon(tx0(i)),lat(ty1(j)),lon(tx0(i)+TS)].map(v=>v.toFixed(6)).join(',')+'&WIDTH='+px+'&HEIGHT='+px+'&FORMAT=image/geotiff';
+  const r=await fetchRetry(u);const ct=r.headers.get('content-type')||'';const b=await r.arrayBuffer();
+  if(!/tiff/i.test(ct))throw new Error('réponse IGN inattendue : '+new TextDecoder().decode(b.slice(0,160)));
+  return tiffFloats(b,px);}
+function encodeGrid(a,px){ // hauteur -> (h+10)*10, 0 = pas de donnée ; la mer sans mesure vaut 0 m ; delta par ligne
+  const o=new Int16Array(px*px);let valid=0;
+  for(let r=0;r<px;r++){let prev=0;for(let c=0;c<px;c++){const v=a[r*px+c];let e;
+    if(v>-50&&v<2000){e=Math.round((v+10)*10);valid++;}else e=100;
+    e=Math.max(1,Math.min(30000,e));o[r*px+c]=e-prev;prev=e;}}
+  return{o,valid};}
+async function buildRelief(i,j){
+  const S=await wmsGrid(MNS,i,j,TS),T=await wmsGrid(MNT,i,j,TS/2);
+  const a=encodeGrid(S,TS),b=encodeGrid(T,TS/2);
+  const raw=new Uint8Array(a.o.byteLength+b.o.byteLength);raw.set(new Uint8Array(a.o.buffer),0);raw.set(new Uint8Array(b.o.buffer),a.o.byteLength);
+  return{gz:await gz(raw),valid:a.valid};}
+
+// ---- principal
+async function main(){
+  $('go').disabled=true;$('out').hidden=true;$('links').innerHTML='';$('log').textContent='';
+  await openDB();if($('redo').checked)await dbClear();
+  const files=new Map(); // chemin -> Uint8Array
+  const keep=async(path,data)=>{files.set(path,data);await dbPut(path,data);};
+  const cached=async(path)=>{const v=await dbGet(path);if(v)files.set(path,v);return !!v;};
+  const enc=s=>new TextEncoder().encode(s);
+  try{
+    step('Lecture de la zone existante…',0.01);
+    let idx={tiles:[],partial:[]},old=[];
+    try{idx=await (await fetch('zone/index.json',{cache:'no-cache'})).json();}catch(e){log('Pas de zone/index.json en ligne : on repart de zéro.');}
+    try{old=await (await fetch('zone/places.json',{cache:'no-cache'})).json();}catch(e){}
+    const partial=new Set((idx.partial||[]).map(t=>t.join('_')));
+    try{const ro=await (await fetch('zone/roads.json',{cache:'no-cache'})).json();for(const n of ro.n||[])for(const w of n.split(/[\s’']+/)){const k=norm(w);if(k.length>2&&w!==w.toLowerCase()&&!WORDS.has(k)&&k!==w.toLowerCase())WORDS.set(k,w);}}catch(e){}
+
+    step('Lieux (OpenStreetMap)…',0.03);
+    let places;const pc=await dbGet('zone/places.json');
+    if(pc){places=JSON.parse(new TextDecoder().decode(pc));log('Lieux repris de la conservation : '+places.length);}
+    else{places=await buildPlaces(old);await dbPut('zone/places.json',enc(JSON.stringify(places)));}
+    files.set('zone/places.json',enc(JSON.stringify(places)));
+
+    // morceaux à fabriquer : proches d’un lieu
+    const need=new Set();
+    for(const p of places){const x=p[2],y=p[3];
+      for(let j=Math.max(0,Math.floor((Y1-y-NEAR)/TS));j<=Math.min(NY-1,Math.floor((Y1-y+NEAR)/TS));j++)
+        for(let i=Math.max(0,Math.floor((x-NEAR-X0)/TS));i<=Math.min(NX-1,Math.floor((x+NEAR-X0)/TS));i++)need.add(i+'_'+j);}
+    for(const t of idx.tiles||[])need.add(t.join('_'));
+    const tiles=[...need].map(s=>s.split('_').map(Number)).sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
+    const onlyQ=new URLSearchParams(location.search).get('tiles');
+    const todo=onlyQ?tiles.filter(t=>onlyQ.split(',').includes(t.join('_'))):tiles;
+    log('Morceaux de 512 m à construire : '+todo.length);
+
+    step('Rues (BD TOPO)…',0.06);
+    const rc=await dbGet('zone/roads.json');
+    if(rc){files.set('zone/roads.json',rc);log('Rues reprises de la conservation.');}
+    else{const roads=await buildRoads(todo,f=>step('Rues (BD TOPO)…',0.06+0.1*f));await keep('zone/roads.json',enc(JSON.stringify(roads)));}
+
+    const final=[];let done=0;const failed=[];
+    step('Relief et bâtiments…',0.17);
+    await pool(todo,3,async([i,j])=>{
+      const tp='zone/t_'+i+'_'+j+'.bin',bp='zone/b_'+i+'_'+j+'.json';
+      try{
+        if(!(await cached(tp))){const r=await buildRelief(i,j);if(r.valid<TS*TS*0.02){/* quasi que de la mer : on garde quand même si un lieu est proche */}await keep(tp,r.gz);}
+        if(!(await cached(bp))){const b=await buildBuildings(i,j);await keep(bp,enc(JSON.stringify(b)));}
+        final.push([i,j]);
+      }catch(e){failed.push(i+'_'+j);log('✗ morceau '+i+'_'+j+' : '+e.message);}
+    },n=>{done=n;step('Relief et bâtiments… '+n+' / '+todo.length,0.17+0.78*n/todo.length);});
+    if(failed.length)log('⚠ '+failed.length+' morceau(x) en échec : relance l’outil pour les refaire (le reste est conservé).');
+    // morceaux déjà en ligne mais non reconstruits
+    const built=new Set(final.map(t=>t.join('_')));
+    const keepOld=(idx.tiles||[]).filter(t=>!built.has(t.join('_'))&&!partial.has(t.join('_'))&&!onlyQ);
+    const all=[...final,...keepOld].sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
+    await keep('zone/index.json',enc(JSON.stringify({v:1,ts:TS,x0:X0,y1:Y1,nx:NX,ny:NY,tiles:all,built:Date.now()})));
+
+    step('Préparation des fichiers à télécharger…',0.97);
+    const list=[...files.keys()].sort();const lots=[];
+    // le lot 1 contient index, lieux, rues
+    const first=list.filter(p=>/index|places|roads/.test(p)),rest=list.filter(p=>!first.includes(p));
+    const LOT=95;let cur=[...first];
+    for(const p of rest){if(cur.length>=LOT){lots.push(cur);cur=[];}cur.push(p);}
+    if(cur.length)lots.push(cur);
+    for(let n=0;n<lots.length;n++){const z=new JSZip();for(const p of lots[n])z.file(p,files.get(p));
+      const blob=await z.generateAsync({type:'blob',compression:'STORE'});
+      const a=document.createElement('a');a.className='dl';a.href=URL.createObjectURL(blob);a.download='solio-zone-lot-'+(n+1)+'.zip';a.textContent='Lot '+(n+1)+' / '+lots.length+' ('+lots[n].length+' fichiers, '+(blob.size/1048576).toFixed(1)+' Mo)';
+      $('links').appendChild(a);}
+    $('out').hidden=false;step('Terminé : '+all.length+' morceaux, '+places.length+' lieux.',1);
+    log('Terminé.');
+  }catch(e){log('ERREUR : '+(e&&e.message||e));step('Erreur — voir le journal ci-dessous, puis relance.',0);}
+  $('go').disabled=false;
+}
+$('go').onclick=main;
+if(new URLSearchParams(location.search).get('auto'))main();
+</script>
+</body>
+</html>

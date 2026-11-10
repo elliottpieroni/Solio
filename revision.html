@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Solio · Révision des terrasses</title>
+<style>
+:root{--bg:#fbf7ef;--card:#fff;--fg:#2a1f10;--mut:#7b6f5c;--line:#eadfca;--sun:#ffb000;--yes:#2f9e55;--no:#d4453a;--ask:#8a7f6c}
+@media (prefers-color-scheme:dark){:root{--bg:#17130c;--card:#241d12;--fg:#f6eedd;--mut:#b3a68c;--line:#3a3022}}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding-bottom:90px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px}
+h1{font-size:19px;margin:0 0 2px}
+.sub{font-size:13px;color:var(--mut)}
+.bar{height:6px;border-radius:3px;background:var(--line);margin:8px 0;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--sun);transition:width .3s}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tools button,.tools label{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:7px 12px}
+.tools button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
+main{padding:12px 16px;display:grid;gap:12px;max-width:640px;margin:0 auto}
+.p{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px}
+.p.cur{outline:2px solid var(--sun)}
+.p.done{opacity:.55}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.nm{font-weight:700;font-size:17px}.k{font-size:13px;color:var(--mut)}
+.st{font-size:12px;border-radius:999px;padding:2px 9px;background:var(--line);color:var(--mut);white-space:nowrap}
+.st.y{background:#d9f3e2;color:#1d6b3a}.st.n{background:#fbe0dd;color:#9b2a21}
+.lk{display:flex;gap:8px;flex-wrap:wrap}
+.lk a{flex:1 1 140px;text-align:center;text-decoration:none;font-weight:600;font-size:15px;border-radius:12px;padding:11px 10px;background:var(--sun);color:#2a1700}
+.lk a.g{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.ch{display:grid;grid-template-columns:1fr 1fr 70px;gap:8px}
+.ch button{font:inherit;font-weight:700;border:2px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;padding:11px 6px}
+.ch button.y.on{background:var(--yes);border-color:var(--yes);color:#fff}
+.ch button.n.on{background:var(--no);border-color:var(--no);color:#fff}
+.ch button.q.on{background:var(--ask);border-color:var(--ask);color:#fff}
+footer{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px}
+footer button{flex:1;font:inherit;font-weight:700;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:12px}
+footer button.go{background:var(--sun);border-color:var(--sun);color:#2a1700}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--fg);width:min(92vw,560px)}
+dialog textarea{width:100%;height:220px;font:12px/1.3 ui-monospace,monospace;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Révision des terrasses</h1>
+  <div class="sub" id="sub">Chargement…</div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="tools">
+    <button id="fTodo" aria-pressed="true">À réviser seulement</button>
+    <button id="fAll" aria-pressed="false">Tous les lieux</button>
+  </div>
+</header>
+<main id="list"></main>
+<footer>
+  <button id="next" class="go">Lieu suivant ↓</button>
+  <button id="exp">Exporter</button>
+</footer>
+<dialog id="dlg"><p class="sub">Copie ce texte : c’est ton fichier <b>terrasses.json</b> (2 = terrasse, 0 = pas de terrasse). Tes choix sont déjà pris en compte dans l’app sur cet appareil.</p><textarea id="ta" readonly></textarea><div class="tools" style="margin-top:8px"><button id="cp">Copier</button><button id="rs">Tout effacer</button><button id="cl">Fermer</button></div></dialog>
+<script>window.PD_READY=fetch("zone/places.json").then(r=>r.json()).then(d=>{window.PD=d;});</script>
+<script>PD_READY.then(()=>{
+const LAT=43.581,LON=7.124,KX=111320*Math.cos(LAT*Math.PI/180),KY=110574;
+const KIND={restaurant:'Restaurant',cafe:'Café',bar:'Bar',pub:'Pub',fast_food:'Restauration rapide',ice_cream:'Glacier'};
+const $=id=>document.getElementById(id);
+let MAN={};try{MAN=JSON.parse(localStorage.getItem('terr-manual')||'{}');}catch(e){}
+let all=PD.map(([n,k,x,y,o],i)=>({i,n,k,x,y,o,lat:LAT+y/KY,lon:LON+x/KX}));
+// parcours : plus proche voisin, pour enchaîner les lieux dans l'ordre de la rue
+(function(){const left=all.slice(),out=[];let cur=left.reduce((a,b)=>Math.hypot(b.x,b.y)<Math.hypot(a.x,a.y)?b:a);
+  while(left.length){left.splice(left.indexOf(cur),1);out.push(cur);if(!left.length)break;cur=left.reduce((a,b)=>Math.hypot(a.x-cur.x,a.y-cur.y)<Math.hypot(b.x-cur.x,b.y-cur.y)?a:b);}
+  all=out;})();
+let todoOnly=true;
+const dec=p=>MAN[p.i];
+const osm=p=>p.o?'OpenStreetMap : terrasse':'Pas d’information';
+function save(){try{localStorage.setItem('terr-manual',JSON.stringify(MAN));}catch(e){}}
+function svUrl(p){return 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+p.lat.toFixed(6)+','+p.lon.toFixed(6)+'&pitch=0&fov=90';}
+function fiche(p){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.n+' Antibes');}
+function row(p){const d=dec(p),el=document.createElement('section');el.className='p'+(d!=null?' done':'');el.id='p'+p.i;
+  el.innerHTML='<div class="top"><div><div class="nm"></div><div class="k"></div></div><span class="st"></span></div>'+
+  '<div class="lk"><a target="_blank" rel="noopener" class="sv">Voir en Street View</a><a target="_blank" rel="noopener" class="g fi">Fiche Google (photos)</a></div>'+
+  '<div class="ch"><button class="y">Terrasse</button><button class="n">Pas de terrasse</button><button class="q">?</button></div>';
+  el.querySelector('.nm').textContent=p.n;el.querySelector('.k').textContent=(KIND[p.k]||p.k)+' · '+osm(p);
+  el.querySelector('.sv').href=svUrl(p);el.querySelector('.fi').href=fiche(p);
+  const st=el.querySelector('.st');if(d===2){st.textContent='Terrasse ✓';st.className='st y';}else if(d===0){st.textContent='Pas de terrasse';st.className='st n';}else if(d===-1){st.textContent='Pas sûr';st.className='st';}else{st.textContent='à voir';}
+  el.querySelector('.ch .y').classList.toggle('on',d===2);el.querySelector('.ch .n').classList.toggle('on',d===0);el.querySelector('.ch .q').classList.toggle('on',d===-1);
+  const set=v=>{if(v===null)delete MAN[p.i];else MAN[p.i]=v;save();const nx=el.nextElementSibling;render(false);const n2=$('p'+p.i);const target=($('p'+p.i)&&$('p'+p.i).nextElementSibling)||null;if(target)target.scrollIntoView({behavior:'smooth',block:'center'});markCur(target);};
+  el.querySelector('.ch .y').onclick=()=>set(d===2?null:2);el.querySelector('.ch .n').onclick=()=>set(d===0?null:0);el.querySelector('.ch .q').onclick=()=>set(d===-1?null:-1);
+  return el;}
+function markCur(el){document.querySelectorAll('.p.cur').forEach(e=>e.classList.remove('cur'));if(el)el.classList.add('cur');}
+function render(scroll){const box=$('list');box.innerHTML='';const list=all.filter(p=>todoOnly?!p.o||dec(p)!=null:true);
+  const shown=list.length;list.forEach(p=>box.appendChild(row(p)));
+  const done=all.filter(p=>dec(p)!=null&&dec(p)!==-1).length,todo=all.filter(p=>!p.o).length;
+  $('sub').textContent=done+' lieux révisés · '+todo+' sans information · '+shown+' affichés';
+  $('bar').style.width=Math.min(100,done/all.length*100)+'%';
+  $('fTodo').setAttribute('aria-pressed',todoOnly);$('fAll').setAttribute('aria-pressed',!todoOnly);}
+function nextTodo(){const els=[...document.querySelectorAll('.p')];const e=els.find(x=>!x.classList.contains('done'));if(e){e.scrollIntoView({behavior:'smooth',block:'center'});markCur(e);}}
+$('next').onclick=nextTodo;
+$('fTodo').onclick=()=>{todoOnly=true;render();};$('fAll').onclick=()=>{todoOnly=false;render();};
+$('exp').onclick=()=>{const o={};all.forEach(p=>{if(MAN[p.i]===2||MAN[p.i]===0)o[p.i]=MAN[p.i];});$('ta').value=JSON.stringify(o);$('dlg').showModal();$('ta').select();};
+$('cp').onclick=async()=>{try{await navigator.clipboard.writeText($('ta').value);$('cp').textContent='Copié ✓';}catch(e){$('ta').select();}};
+$('cl').onclick=()=>$('dlg').close();
+$('rs').onclick=()=>{if($('rs').dataset.s){MAN={};save();render();$('dlg').close();}else{$('rs').dataset.s=1;$('rs').textContent='Confirmer l’effacement';}};
+render();nextTodo();
+});</script>
+</body>
+</html>

@@ -165,9 +165,16 @@
   <div class="cap"><a id="lbn" target="_blank" rel="noopener"></a><span id="lbk"></span><a id="lbsv" target="_blank" rel="noopener" style="font-size:14px;font-weight:500">Street View ↗</a></div>
   <div class="row"><button id="lbPlan" aria-pressed="true">Plan et ombres</button><button id="lbPhoto" aria-pressed="false">Photo aérienne</button><button id="lbx">Fermer</button></div>
 </div>
-<script src="data.js"></script>
+<script>
+window.ZLOAD=(async()=>{const g=u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u);return r.json();});
+  const [idx,roads,pl]=await Promise.all([g('zone/index.json'),g('zone/roads.json'),g('zone/places.json')]);
+  window.ZIDX=idx;window.PLAN={r:roads.r,n:roads.n};window.PD=pl;})();
+</script>
 <script src="config.js"></script>
-<script src="app.js"></script>
+<script>
+ZLOAD.then(()=>{const s=document.createElement('script');s.src='app.js';document.body.appendChild(s);},
+  ()=>{const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;z-index:99;display:grid;place-content:center;padding:24px;text-align:center;font:16px system-ui;background:#fff8ec;color:#2b2217';d.innerHTML='<b>Impossible de charger les données.</b><br>Vérifie ta connexion puis recharge la page.';document.body.appendChild(d);});
+</script>
 <script>if("serviceWorker"in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!window.__rl){window.__rl=1;location.reload();}});addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
 </body>
 </html>

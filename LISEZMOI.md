@@ -14,7 +14,7 @@ Elle doit être servie en **HTTPS** (obligatoire pour l'installation, le mode ho
 3. Lancer « Terrasses » depuis l'icône. Au premier lancement, attendre la fin de l'intro : tout est alors mis en cache pour le hors ligne.
 
 ## Contenu
-index.html, style.css, app.js : l'app. data.js : relief LiDAR IGN, plan et établissements (2,8 Mo).
+index.html, style.css, app.js : l'app. zone/ : relief LiDAR IGN, bâtiments, rues et établissements, par morceaux de 512 m (chargés autour de l'utilisateur). construire.html : outil qui (re)fabrique zone/ pour toute la commune.
 thumbs/ : photos aériennes IGN. sw.js : cache hors ligne. manifest.webmanifest et icons/ : installation.
 Pour publier une mise à jour, changer le nom de cache `terrasses-v1` dans sw.js.
 
