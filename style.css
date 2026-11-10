@@ -453,3 +453,4 @@ html[lang=en] .tbig i{font-size:40px;font-weight:200;margin:0 1px;position:relat
 .galsun b{font-family:'Fraunces',Georgia,serif;font-weight:300}
 .galsun b.sm{font-weight:500}
 .galinfo,.galbtn a,.galchip,.galsun small{font-family:'DM Sans',var(--body)}
+.galsun b{display:block;line-height:.98}
