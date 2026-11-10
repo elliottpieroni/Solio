@@ -83,7 +83,7 @@ const M0=420,M1=1380,STEP=10,NM=(M1-M0)/STEP;
 const RADII=[200,400,700,1000,1500],WALK=80; // 80 m par minute de marche
 const now=new Date();
 let dYear=now.getFullYear(),dMonth=now.getMonth(),dDay=now.getDate();
-let selMin=Math.round((now.getHours()*60+now.getMinutes())/5)*5;
+let selMin=Math.min(1380,Math.max(420,Math.round((now.getHours()*60+now.getMinutes())/5)*5));
 let showShade=false,cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
 try{const s=JSON.parse(localStorage.getItem('terr-v2')||'{}');
   if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
@@ -110,8 +110,7 @@ let ARC=[],maxEl=.01,sunrise=null,sunset=null;
 function computeArc(){ARC=[];maxEl=.01;
   for(let m=M0;m<=M1;m+=STEP){const e=elAt(m);ARC.push(e);if(e>maxEl)maxEl=e;}
   sunrise=sunset=null;for(let m=0;m<1440;m+=2){if(elAt(m)>.5*D2R){if(sunrise==null)sunrise=m;sunset=m;}}}
-// ouverture : si le soleil est déjà couché, on propose demain midi
-if(!sunAt(selMin)){if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
+// ouverture : toujours l'heure actuelle
 selMin=Math.max(M0,Math.min(M1,selMin));
 computeArc();
 
@@ -605,6 +604,7 @@ $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
 document.querySelector('.datebtn').addEventListener('click',()=>{try{$('date').showPicker();}catch(e){}});
 $('now').onclick=()=>{stopPlay();const n=new Date();[dYear,dMonth,dDay]=[n.getFullYear(),n.getMonth(),n.getDate()];
   selMin=clamp(Math.round((n.getHours()*60+n.getMinutes())/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);};
+let hidAt=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hidAt=Date.now();return;}if(hidAt&&Date.now()-hidAt>120000&&!scrubbing){try{$('now').onclick();}catch(e){}}hidAt=0;});
 
 // ---- thème
 function themeChanged(){readTokens();for(const t of TILES.values())t.c=null;drawDial();if(G){schedule(true);if(lbP)drawLB();}}
@@ -726,7 +726,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v37',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v38',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
