@@ -527,3 +527,10 @@ html[lang=en] .tbig i{font-size:34px;top:-2px}
 .sunhrs svg{width:18px;height:18px;flex:none;color:var(--sun);stroke:var(--sun);fill:none;stroke-width:2.2;stroke-linecap:round}
 #dial{height:24px}
 .time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.2 + 3px)}
+
+/* v56 : arc du soleil derrière l'heure, app plein écran */
+.sunhrs{display:none!important}
+#app{position:fixed;inset:0;height:auto}
+#dial{height:104px;margin-top:-48px;position:relative;z-index:0}
+.trow{position:relative;z-index:2}
+.time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.2 + 3px)}
