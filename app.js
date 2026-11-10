@@ -369,11 +369,14 @@ function select(p,o){o=o||{};sel=p;
   if(p&&o.fly!==false){if(route){fitRoute();revealRoute();}else fly(p.sx,p.sy,o.zoom||(scale<2?2.6:scale));}
   else if(route)routeProg=1;
   drawDial();drawMap();}
-function pick(p){if(listOpen)setOpen(false);select(p);}
-function setOpen(v){listOpen=v;$('panel').classList.toggle('open',v);$('grab').setAttribute('aria-expanded',v);
-  $('grab').setAttribute('aria-label',v?'Replier la liste':'Afficher la liste');
-  requestAnimationFrame(()=>{layout();if(sel){centerCard(sel,false);if(route&&route.p===sel)fitRoute(350);else fly(sel.sx,sel.sy,scale,350);}else drawMap();});}
-
+let pst=1; // 0 replié, 1 normal, 2 liste
+function pick(p){if(pst!==1)setSt(1);select(p);}
+function setSt(s){pst=clamp(s,0,2);listOpen=pst===2;const pn=$('panel');pn.classList.toggle('open',pst===2);pn.classList.toggle('min',pst===0);
+  $('grab').setAttribute('aria-expanded',pst!==0);
+  $('grab').setAttribute('aria-label',pst===0?'Afficher les terrasses':pst===1?'Agrandir la liste':'Replier le panneau');
+  setTimeout(()=>{layout();if(pst&&sel)centerCard(sel,false);if(G){if(sel&&pst){if(route&&route.p===sel)fitRoute(350);else fly(sel.sx,sel.sy,scale,350);}else drawMap();requestShadow(false);}},60);}
+function setOpen(v){setSt(v?2:1);}
+function zoomBy(f){flightId++;scale=clamp(scale*f,.35,10);drawMap();requestShadow(false);}
 // ---- cadran solaire
 const dial=$('dial');
 function drawDial(){
@@ -585,7 +588,11 @@ $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save()
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
 $('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
 $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedule(false);};
-$('grab').onclick=()=>setOpen(!listOpen);
+$('grab').onclick=()=>{if(Date.now()<gSw)return;setSt(pst===0?1:pst===1?2:0);};
+let gY=null,gSw=0;
+$('grab').addEventListener('pointerdown',e=>{gY=e.clientY;});
+$('grab').addEventListener('pointerup',e=>{if(gY==null)return;const dy=e.clientY-gY;gY=null;if(Math.abs(dy)>24){gSw=Date.now()+300;setSt(pst+(dy<0?1:-1));}});
+$('zin').onclick=()=>zoomBy(1.4);$('zout').onclick=()=>zoomBy(1/1.4);
 $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
   if(v.length===3&&v[0]){stopPlay();[dYear,dMonth,dDay]=[v[0],v[1]-1,v[2]];computeArc();if(G)computeDay();schedule(true);}};
 document.querySelector('.datebtn').addEventListener('click',()=>{try{$('date').showPicker();}catch(e){}});
