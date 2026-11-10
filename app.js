@@ -305,6 +305,8 @@ mc.addEventListener('wheel',e=>{e.preventDefault();flightId++;scale=clamp(scale*
 
 // ---- cartes
 const CARDS=new Map();
+function splitName(el,n){el.textContent='';const w=n.split(' ');if(w.length<2){el.textContent=n;return;}let bi=1,bd=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(w.slice(0,i).join(' ').length-w.slice(i).join(' ').length);if(d<bd){bd=d;bi=i;}}el.append(w.slice(0,bi).join(' '),document.createElement('br'),w.slice(bi).join(' '));}
+function sunParts(txt,sm,b){const m=/^(.*?)(\d{1,2})\s?h\s?(\d{2})$/.exec(txt);b.textContent='';if(m){sm.textContent=m[1].trim();b.className='';b.append(m[2]+' h',document.createElement('br'),m[3]);}else{sm.textContent='';b.className='sm';b.textContent=txt;}}
 function makeCard(p){
   const el=document.createElement('article');el.className='card';el.dataset.i=p.i;
   const th=document.createElement('button');th.className='th';th.setAttribute('aria-label','Agrandir la vue aérienne de '+p.n);
@@ -314,16 +316,16 @@ function makeCard(p){
   m.style.left=(50+(p.sx-p.x)/span*100)+'%';m.style.top=(50-(p.sy-p.y)/span*100)+'%';th.appendChild(m);
   th.onclick=e=>{e.stopPropagation();openGal(p);};
   const ct=document.createElement('div');ct.className='ct';
-  ct.innerHTML='<div class="chd"><div class="cn"></div><div class="ck"></div></div><div class="pill"><span class="dot"></span><span class="ptxt"></span></div><div class="links"><a class="go" target="_blank" rel="noopener">Y aller ↗</a><a class="svl" target="_blank" rel="noopener">Street View ↗</a></div>';
-  ct.querySelector('.cn').textContent=p.n;ct.querySelector('.go').href=nav(p);ct.querySelector('.svl').href=sv(p);
-  el.append(th,ct);el._mk=m;el._pill=ct.querySelector('.pill');el._ptxt=ct.querySelector('.ptxt');el._ck=ct.querySelector('.ck');
+  ct.innerHTML='<span class="ck"></span><div class="cn"></div><div class="cbot"><div class="csun"><small></small><b></b></div><a class="go" target="_blank" rel="noopener">Y aller</a></div>';
+  splitName(ct.querySelector('.cn'),p.n);ct.querySelector('.go').href=nav(p);
+  el.append(th,ct);el._mk=m;el._sl=ct.querySelector('.csun small');el._sb=ct.querySelector('.csun b');el._ck=ct.querySelector('.ck');
   el.addEventListener('click',e=>{if(e.target.closest('a'))return;openGal(p);});
   CARDS.set(p.i,el);return el;
 }
 function paintCard(el,p,d,st){
   const [cls,txt]=pill(p,st),ck=(KIND[p.k]||p.k);
-  if(el._cls!==cls){el._cls=cls;el._pill.className='pill '+cls;el._mk.className='mk '+(st===2?'sun':'sh');}
-  if(el._txt!==txt){el._txt=txt;el._ptxt.textContent=txt;}
+  if(el._cls!==cls){el._cls=cls;el._mk.className='mk '+(st===2?'sun':'sh');}
+  if(el._txt!==txt){el._txt=txt;sunParts(txt,el._sl,el._sb);}
   if(el._ckt!==ck){el._ckt=ck;el._ck.textContent=ck;}
   el.classList.toggle('on',p===sel);
 }
@@ -735,7 +737,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v50',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v51',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -803,7 +805,7 @@ if(LANG==='en'){(()=>{
   const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
     if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.tile')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}
     if(r==null){r=core;for(const [re,t] of FR)r=r.replace(re,t);}return m[1]+r+m[3];};
-  const doText=n=>{if(n.parentElement&&n.parentElement.closest&&n.parentElement.closest('#galuv'))return;const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
+  const doText=n=>{if(n.parentElement&&n.parentElement.closest&&n.parentElement.closest('#galuv,.csun b'))return;const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
   const doAttr=e=>{for(const a of ['aria-label','title']){const v=e.getAttribute&&e.getAttribute(a);if(v){const r=tr(v);if(r!==v)e.setAttribute(a,r);}}};
   const walk=root=>{if(root.nodeType===3){if(!/^(SCRIPT|STYLE)$/.test((root.parentNode||{}).nodeName))doText(root);return;}if(root.nodeType!==1||/^(SCRIPT|STYLE|CANVAS)$/.test(root.nodeName))return;
     doAttr(root);const w=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){if(n.nodeType===3){if(!/^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName))doText(n);}else doAttr(n);}};
