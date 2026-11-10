@@ -708,7 +708,13 @@ async function gpPhotos(p){if(GPL[p.i])return GPL[p.i];if(!GKEY)return GPL[p.i]=
 async function openGal(p){try{return await openGal0(p);}catch(e){toast('Galerie : '+(e&&e.message||e));}}
 async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;sl.replaceChildren();sl.scrollLeft=0;
   $('galn').textContent=p.n;const st=stateAt(p,selMin),[,txt]=pill(p,st);
-  $('galk').textContent=(KIND[p.k]||p.k)+' · '+txt;$('galgo').href=nav(p);$('galsv').href=sv(p);$('galcount').textContent='';$('galcr').textContent='';
+  let wm=0;try{const [,fx,fy]=PLACES[from];wm=Math.max(1,Math.round(Math.hypot(p.sx-fx,p.sy-fy)*1.25/WALK));}catch(e){}
+  $('galk').textContent=(KIND[p.k]||p.k)+(wm?' · '+wm+' min à pied':'');
+  {const m=/^(.*?)(\d{1,2}\s?h\s?\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent=m?m[2]:txt;uv.classList.toggle('sm',!m);
+   if(m&&!/^Soleil/.test($('galul').textContent))$('galul').textContent=m[1].trim();
+   const bar=$('galbar');bar.replaceChildren();try{if(!p.day)dayFor(p);let k=0;while(k<NM){if(p.day[k]===2){let j=k;while(j<NM&&p.day[j]===2)j++;const e=document.createElement('i');e.style.left=(k/NM*100)+'%';e.style.width=((j-k)/NM*100)+'%';bar.appendChild(e);k=j;}else k++;}
+   const u=document.createElement('u');u.style.left=(Math.max(0,Math.min(1,(selMin-M0)/(M1-M0)))*100)+'%';bar.appendChild(u);}catch(e){}}
+  $('galgo').href=nav(p);$('galsv').href=sv(p);$('galcount').textContent='';$('galcr').textContent='';
   const slides=[];
   const svu=(svOk(p)&&SV[p.i].u)||null;if(svu)slides.push({u:svu,a:'',sv:1});
   const add=l=>{for(const x of l)if(!slides.some(s=>s.u===x.u))slides.push(x);};
@@ -717,7 +723,7 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
     sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.src=s.u;
       im.onerror=()=>{f.remove();upd();};f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
   const upd=()=>{const fs=[...sl.children],w=sl.clientWidth||1,i=Math.min(fs.length-1,Math.round(sl.scrollLeft/w));
-    $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';$('galprev').classList.toggle('off',fs.length<2||i<=0);$('galnext').classList.toggle('off',fs.length<2||i>=fs.length-1);$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
+    $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';{const d=$('galdots');if(d.children.length!==fs.length){d.replaceChildren();fs.forEach(()=>d.appendChild(document.createElement('i')));}[...d.children].forEach((e,n)=>e.classList.toggle('on',n===i));}$('galprev').classList.toggle('off',fs.length<2||i<=0);$('galnext').classList.toggle('off',fs.length<2||i>=fs.length-1);$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
   sl.onscroll=upd;draw();$('galprev').onclick=()=>sl.scrollBy({left:-sl.clientWidth,behavior:'smooth'});$('galnext').onclick=()=>sl.scrollBy({left:sl.clientWidth,behavior:'smooth'});
   if(GKEY&&!svOk(p))svFetch(p).then(()=>{if(galP===p&&svOk(p)&&SV[p.i].u){add([]);slides.unshift({u:SV[p.i].u,a:'',sv:1});draw();}});
   GPERR='';const more=await gpPhotos(p);if(galP!==p)return;if(more.length){add(more);draw();}else{const g=[...sl.children].some(f=>/googleapis/.test(f.querySelector('img')&&f.querySelector('img').src||''));if(!g)$('galcr').textContent=GPERR||(GKEY?'Pas de photo Google pour ce lieu':'Clé Google absente');}}
@@ -726,7 +732,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v38',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v39',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
