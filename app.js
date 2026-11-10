@@ -89,6 +89,9 @@ let showShade=false,cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=40
 try{const s=JSON.parse(localStorage.getItem('terr-v2')||'{}');
   if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
   if(['all','boire','manger'].includes(s.cat))cat=s.cat;if([15,30,45,60,75,90,105,120].includes(s.sunNeed))sunNeed=s.sunNeed;}catch(e){}
+// défaut provisoire : Plage de la Gravette à 12 h 30 (mettre DEF_MIN=null pour reprendre l'heure réelle)
+const DEF_MIN=750,DEF_PLACE='Plage de la Gravette';
+{const i=PLACES.findIndex(q=>q[0]===DEF_PLACE);if(i>=0)from=i;if(typeof DEF_MIN==='number')selMin=DEF_MIN;}
 function save(){try{localStorage.setItem('terr-v2',JSON.stringify({dist,from,cat,fSun,walkMin,sunNeed}))}catch(e){}}
 
 function sunAt(m){const s=sun(toUTC(dYear,dMonth,dDay,m));return s.el>.5*D2R?{dx:Math.sin(s.az),dy:Math.cos(s.az),te:Math.tan(s.el)}:null;}
@@ -609,7 +612,7 @@ $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
 document.querySelector('.datebtn').addEventListener('click',()=>{try{$('date').showPicker();}catch(e){}});
 $('now').onclick=()=>{stopPlay();const n=new Date();[dYear,dMonth,dDay]=[n.getFullYear(),n.getMonth(),n.getDate()];
   selMin=clamp(Math.round((n.getHours()*60+n.getMinutes())/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);};
-let hidAt=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hidAt=Date.now();return;}if(hidAt&&Date.now()-hidAt>120000&&!scrubbing){try{$('now').onclick();}catch(e){}}hidAt=0;});
+let hidAt=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hidAt=Date.now();return;}if(typeof DEF_MIN!=='number'&&hidAt&&Date.now()-hidAt>120000&&!scrubbing){try{$('now').onclick();}catch(e){}}hidAt=0;});
 
 // ---- thème
 function themeChanged(){readTokens();for(const t of TILES.values())t.c=null;drawDial();if(G){schedule(true);if(lbP)drawLB();}}
@@ -673,6 +676,7 @@ if($('sunRange'))$('sunRange').addEventListener('input',e=>{sunNeed=+e.target.va
 function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
   dYear=n.getFullYear();dMonth=n.getMonth();dDay=n.getDate();selMin=Math.round((n.getHours()*60+n.getMinutes())/5)*5;
   if(!sunAt(selMin)){night=true;if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
+  if(typeof DEF_MIN==='number'){selMin=DEF_MIN;night=false;}
   selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!SVS))computeDay();return night;}
 
 const THQ=new Set();
@@ -738,7 +742,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v58',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v59',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
