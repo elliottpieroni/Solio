@@ -387,3 +387,5 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .galbtn .primary{background:var(--sun);color:var(--sun-ink);border-color:transparent}
 
 #fShade,#rad,#sunspan{display:none!important}
+
+.ver{z-index:60!important;opacity:1!important;font-size:11px!important;font-weight:600;color:#fff!important;background:#000000a8;padding:3px 9px;border-radius:999px;right:10px!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important}
