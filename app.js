@@ -1,3 +1,4 @@
+const LANG=(()=>{try{return localStorage.getItem('solio-lang')==='en'?'en':'fr';}catch(e){return 'fr';}})();
 const $=id=>document.getElementById(id);
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const R2D=180/Math.PI,D2R=Math.PI/180,LAT=43.581,LON=7.124,KX=111320*Math.cos(LAT*D2R),KY=110574;
@@ -401,7 +402,7 @@ function drawDial(){
   g.restore();
   // repères d'heures
   g.fillStyle=TK.muted;g.font='500 11px "DM Sans",sans-serif';g.textAlign='center';g.textBaseline='alphabetic';
-  for(const h of [8,12,16,20]){g.fillText(h+' h',X(h*60),H-4);}
+  for(const h of [8,12,16,20]){g.fillText(LANG==='en'?h+':00':h+' h',X(h*60),H-4);}
   // curseur
   const e=elAt(selMin),up=e>.5*D2R,tx=X(selMin),ty=up?Y(e):y0-9;
   g.strokeStyle=TK.fg;g.globalAlpha=.3;g.lineWidth=1;g.beginPath();g.moveTo(tx,ty);g.lineTo(tx,y0+6);g.stroke();g.globalAlpha=1;
@@ -443,7 +444,7 @@ function filter(){
     const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>dist)continue;const st=stateAt(p,selMin);p.st=st;if(fSun&&st!==2&&p!==sel)continue;list.push({p,d,st});}
   list.sort((a,b)=>a.d-b.d);RES=list;
 }
-const fmtDate=()=>new Date(dYear,dMonth,dDay).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+const fmtDate=()=>new Date(dYear,dMonth,dDay).toLocaleDateString(LANG==='en'?'en-GB':'fr-FR',{weekday:'short',day:'numeric',month:'short'});
 const kmTxt=d=>d<1000?d+' m':(d/1000).toString().replace('.',',')+' km';
 function placeInd(){const b=$('seg').querySelector('[aria-pressed="true"]'),ind=$('ind');if(!b||!b.offsetWidth)return;
   ind.style.width=b.offsetWidth+'px';ind.style.transform='translateX('+b.offsetLeft+'px)';}
@@ -710,7 +711,7 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   $('galn').textContent=p.n;const st=stateAt(p,selMin),[,txt]=pill(p,st);
   let wm=0;try{const [,fx,fy]=PLACES[from];wm=Math.max(1,Math.round(Math.hypot(p.sx-fx,p.sy-fy)*1.25/WALK));}catch(e){}
   $('galk').textContent=(KIND[p.k]||p.k)+(wm?' · '+wm+' min à pied':'');
-  {const m=/^(.*?)(\d{1,2}\s?h\s?\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent=m?m[2]:txt;uv.classList.toggle('sm',!m);
+  {const m=/^(.*?)(\d{1,2}(?:\s?h\s?|:)\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent=m?m[2]:txt;uv.classList.toggle('sm',!m);
    if(m&&!/^Soleil/.test($('galul').textContent))$('galul').textContent=m[1].trim();
    const bar=$('galbar');bar.replaceChildren();try{if(!p.day)dayFor(p);let k=0;while(k<NM){if(p.day[k]===2){let j=k;while(j<NM&&p.day[j]===2)j++;const e=document.createElement('i');e.style.left=(k/NM*100)+'%';e.style.width=((j-k)/NM*100)+'%';bar.appendChild(e);k=j;}else k++;}
    const u=document.createElement('u');u.style.left=(Math.max(0,Math.min(1,(selMin-M0)/(M1-M0)))*100)+'%';bar.appendChild(u);}catch(e){}}
@@ -732,7 +733,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v39',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v41',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -778,3 +779,33 @@ fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
   CARDS.clear();trayMode='';
   if($('top5').classList.contains('on')&&G)renderTop5();else if(G)schedule(false);
 }).catch(()=>{});
+
+// ---- langue : FR / EN (traduction du DOM ; les noms de lieux restent tels quels)
+document.documentElement.lang=LANG;
+document.querySelectorAll('.langbtn').forEach(b=>{b.textContent=LANG==='en'?'FR':'EN';b.setAttribute('aria-label',LANG==='en'?'Passer en français':'Switch to English');
+  b.onclick=()=>{try{localStorage.setItem('solio-lang',LANG==='en'?'fr':'en');}catch(e){}location.reload();};});
+if(LANG==='en'){(()=>{
+  const EX={'Autour de':'Around','terrasses, au soleil seulement':'sunny terraces only','Tout':'All','Boire':'Drink','Manger':'Eat','Terrasses à l’ombre':'Shaded terraces','Maintenant':'Now','h':':',
+   'Localisateur de terrasses ensoleillées autour de toi':'Find sunny terraces around you','Un coin de':'A touch of','soleil':'sunshine','pour…':'for…','C’est parti':'Let’s go','un verre':'a drink','Bars, cafés, pubs':'Bars, cafés, pubs','Miam':'Yum','dehors':'outside','Restaurants, glaciers, snacks':'Restaurants, ice cream, snacks',
+   'Voir sur la carte':'View on map','Jusqu’où veux-tu marcher ?':'How far do you want to walk?','min à pied':'min walk','Combien de min de soleil restantes au minimum ?':'At least how many minutes of sun left?','min de soleil':'min of sun','Voir les terrasses ensoleillées':'See sunny terraces',
+   'Retour':'Back','Y aller':'Directions','Y aller ↗':'Directions ↗','Plan et ombres':'Map & shadows','Photo aérienne':'Aerial photo','Fermer':'Close',
+   'Carte des ombres':'Shadow map','Retour aux meilleurs spots':'Back to top spots','Point de départ':'Starting point','Seulement les terrasses au soleil':'Only sunny terraces','Zoom avant':'Zoom in','Zoom arrière':'Zoom out','Afficher la liste':'Show list','Boire ou manger':'Drink or eat','Afficher aussi les terrasses à l’ombre':'Also show shaded terraces','Changer le rayon':'Change radius','Lire la journée':'Play the day','Heure':'Time','Changer : boire ou manger':'Switch: drink or eat','Autour de moi':'Around me','Minutes de marche maximum':'Maximum walking minutes','Minutes de soleil restantes minimum':'Minimum minutes of sun left','Photos du lieu':'Place photos','Photo précédente':'Previous photo','Photo suivante':'Next photo','Vue agrandie':'Enlarged view',
+   'Soleil jusqu’à':'Sun until','Ombre · soleil à':'Shade · sun at','Nuit':'Night','Ma position':'My location',
+   'Aucune terrasse au soleil à cette heure':'No sunny terrace at this time','Aucune terrasse dans ce rayon':'No terrace in this radius','. Déplacez le curseur de l’heure pour voir passer le soleil.':'. Move the time slider to follow the sun.','Élargir le rayon':'Widen radius','Pas de soleil ce jour-là':'No sun that day','Aucune terrasse ensoleillée':'No sunny terrace','Élargis la distance ou réduis les minutes de soleil.':'Widen the distance or reduce the minutes of sun.','Le relief n’a pas pu être chargé':'The terrain could not be loaded',
+   'La localisation n’est pas disponible sur cet appareil.':'Location is not available on this device.','Vous êtes hors de la zone couverte (commune d’Antibes) : on part de la place Nationale.':'You are outside the covered area (Antibes): starting from Place Nationale.','Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Location denied. Allow it in Settings > Privacy > Location Services.','Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.':'Position not found right now. Try again outside or pick a point in the list.',
+   'Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.':'No sunny terrace in this radius: widen the distance or reduce the minutes of sun.','Le soleil est couché : on te montre demain à 12 h 30.':'The sun has set: showing you tomorrow at 12:30.',
+   'Bois un verre en terrasse':'Have a drink on a terrace','Mange en terrasse':'Eat on a terrace','au soleil':'in the sun','ici :':'here:',
+   'Pour boire un verre':'To grab a drink','Pour manger dehors':'To eat outside','Aucun lieu trouvé sur Google Maps':'No place found on Google Maps','Pas de photo Google pour ce lieu':'No Google photo for this place','Clé Google absente':'Google key missing'};
+  const FR=[[/Soleil jusqu’au soir/g,'Sun until evening'],[/Soleil jusqu’à/g,'Sun until'],[/Ombre jusqu’au coucher/g,'Shade until sunset'],[/Ombre · soleil à/g,'Shade · sun at'],[/ombres à/g,'shade at'],[/ min à pied/g,' min walk'],[/· terrasse \?/g,'· terrace ?'],[/· terrasse/g,'· terrace'],
+    [/^Glacier(?= ·|$)/,'Ice cream'],[/Restauration rapide/g,'Fast food'],[/Lever (\d+) h (\d\d) · coucher/g,'Sunrise $1:$2 · sunset'],[/^(\d+) h$/,'$1:00'],[/(\d+) h (\d\d)/g,'$1:$2'],[/(\d),(\d) km/g,'$1.$2 km'],[/^Agrandir la vue aérienne de /,'Enlarge aerial view of '],[/contributeur/g,'contributor']];
+  const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
+    if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.tile')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}
+    if(r==null){r=core;for(const [re,t] of FR)r=r.replace(re,t);}return m[1]+r+m[3];};
+  const doText=n=>{const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
+  const doAttr=e=>{for(const a of ['aria-label','title']){const v=e.getAttribute&&e.getAttribute(a);if(v){const r=tr(v);if(r!==v)e.setAttribute(a,r);}}};
+  const walk=root=>{if(root.nodeType===3){if(!/^(SCRIPT|STYLE)$/.test((root.parentNode||{}).nodeName))doText(root);return;}if(root.nodeType!==1||/^(SCRIPT|STYLE|CANVAS)$/.test(root.nodeName))return;
+    doAttr(root);const w=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){if(n.nodeType===3){if(!/^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName))doText(n);}else doAttr(n);}};
+  walk(document.body);
+  new MutationObserver(ms=>{for(const m of ms){if(m.type==='childList')m.addedNodes.forEach(walk);else if(m.type==='characterData')doText(m.target);else if(m.type==='attributes')doAttr(m.target);}})
+    .observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-label','title']});
+})();}

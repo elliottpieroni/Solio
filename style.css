@@ -435,3 +435,8 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .galax{display:flex;justify-content:space-between;font-size:11px;opacity:.75;letter-spacing:.04em;color:#fff}
 .galcr{min-height:0;padding:0;text-align:left;font-size:11px;color:#ffffffb3}
 .galcr:empty{display:none}
+
+.langbtn{font:700 12px var(--body);letter-spacing:.06em}
+.ask>.langbtn{position:absolute;z-index:5;top:calc(14px + env(safe-area-inset-top,0px));right:var(--gutter-r);height:34px;padding:0 14px;border-radius:999px;border:0;background:#ffffffb8;color:#3d2700;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html[lang=en] .tbig i{font-size:40px;font-weight:200;margin:0 1px;position:relative;top:-3px}
+.chip.langbtn{min-width:40px}
