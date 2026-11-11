@@ -641,3 +641,8 @@ body:has(.scr.on)::after{display:none}
 .sheet .h3b{font:300 23px/1.15 var(--display);letter-spacing:-.01em}
 .wread b{font:200 76px/0.9 var(--display);letter-spacing:-.03em}
 .wread.w2 b{font-size:48px}
+
+/* v71 : on descend la barre et l'arc jusqu'en bas (bande vide sous les heures) */
+.panel{padding-bottom:0}
+.time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.3 + 1px)}
+#dial{height:90px;margin-top:2px}
