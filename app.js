@@ -503,6 +503,7 @@ $('lbPlan').onclick=()=>setLB(true);$('lbPhoto').onclick=()=>setLB(false);
 let readyRes;const READY=new Promise(r=>{readyRes=r;});
 const SCRS=['splash','ask','top5'];
 function go(id){
+  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
   for(const s of SCRS){const e=$(s);
     if(s===id){e.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>e.classList.add('on')));}
     else if(e.classList.contains('on')||!e.hidden){e.classList.remove('on');setTimeout(()=>{if(!e.classList.contains('on'))e.hidden=true;},560);}}
@@ -743,7 +744,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v68',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v69',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
