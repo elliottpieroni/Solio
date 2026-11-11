@@ -801,7 +801,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v76',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v77',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
@@ -847,7 +847,11 @@ async function gpFetch0(p){
     return phs.length>0;
   }catch(e){diag('gp','GP réseau');console.warn(e);GPERR=GP_MSG;return false;}}
 async function gpEnsure(ps){const rs=await Promise.all(ps.map(p=>gpFetch(p)));return rs.some(Boolean);}
-// (photos.json : fichier optionnel non fourni, plus de requête au démarrage ; PHOTOS reste vide)
+fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
+  PHOTOS=j||{};if(!Object.keys(PHOTOS).length)return;
+  CARDS.clear();trayMode='';
+  if($('top5').classList.contains('on')&&G)renderTop5();else if(G)schedule(false);
+}).catch(()=>{});
 
 // ---- langue : FR / EN (traduction du DOM ; les noms de lieux restent tels quels)
 document.documentElement.lang=LANG;
