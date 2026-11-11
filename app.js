@@ -589,10 +589,12 @@ function burst(x,y,host){const cols=['#ffb000','#ffd36b','#ff7058','#ffffff','#f
     s.animate([{transform:'translate(0,0) rotate(0) scale(1)',opacity:1},{transform:'translate('+Math.cos(a)*d+'px,'+(Math.sin(a)*d+50)+'px) rotate('+(Math.random()*540)+'deg) scale(.4)',opacity:0}],{duration:750+Math.random()*250,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=()=>s.remove();}}
 // v83 : « MANGER » dépasse toujours un peu du bord droit, quelle que soit la police réellement chargée (Archivo Black ou repli) et la largeur de l'écran
 function fitTitle(){try{const a=$('ask'),p2=document.querySelector('.pick.pk2');if(!a||!p2)return;
-  const s=document.createElement('span');s.setAttribute('aria-hidden','true');s.style.cssText="position:absolute;left:-9999px;top:0;white-space:nowrap;font:400 100px 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase";s.textContent='Manger';document.body.appendChild(s);
-  const w=s.getBoundingClientRect().width;s.remove();if(!w)return;
-  const W=document.documentElement.clientWidth,pl=parseFloat(getComputedStyle(p2).paddingLeft)||16;
-  a.style.setProperty('--tsz',Math.max(60,Math.min((W-pl+W*.07)/w*100,150)).toFixed(1)+'px');}catch(e){}}
+  const wd=t=>{const s=document.createElement('span');s.setAttribute('aria-hidden','true');s.style.cssText="position:absolute;left:-9999px;top:0;white-space:nowrap;font:400 100px 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase";s.textContent=t;document.body.appendChild(s);const w=s.getBoundingClientRect().width;s.remove();return w;};
+  const wm=wd('Manger'),wb=wd('Boire');if(!wm||!wb)return;
+  const W=document.documentElement.clientWidth,pl=parseFloat(getComputedStyle(p2).paddingLeft)||16,pr=parseFloat(getComputedStyle(p2).paddingRight)||16;
+  // MANGER dépasse d'environ 7 % de la largeur (seul le R est coupé) ; BOIRE reste entier, à gauche de la flèche (52 px + marges)
+  const sz=Math.min((W-pl+W*.07)/wm*100,(W-pl-pr-52-12)/wb*100,150);
+  a.style.setProperty('--tsz',Math.max(60,sz).toFixed(1)+'px');}catch(e){}}
 fitTitle();addEventListener('resize',fitTitle);
 if(document.fonts){document.fonts.ready.then(fitTitle);document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',fitTitle);}
 document.querySelectorAll('.pick').forEach(b=>{
@@ -830,7 +832,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v85',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v86',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;

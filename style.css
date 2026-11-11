@@ -725,7 +725,8 @@ body:has(.scr.on)::after{display:none}
 .pick .sub{flex:1;min-width:0;margin:0;padding:0;background:none;height:auto;border-radius:0;font:700 13px/1.25 'Archivo',var(--body),sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:1}
 .pick .go{position:absolute;z-index:3;right:var(--gutter-r);width:52px;height:52px;border-radius:50%;background:#16243D;display:grid;place-items:center;transition:transform .2s}
 .pick.pk1 .go{bottom:calc(78px + (var(--tsz) * .92 - 52px) / 2)}
-.pick.pk2 .go{top:calc(78px + 16px + 6px + (var(--tsz) * .92 - 52px) / 2);background:#FFB000}
+.pick.pk2 .hrow{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pick.pk2 .go{position:static;background:#FFB000}
 .pick .go svg{width:26px;height:26px;fill:none;stroke:#FFB000;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .pick.pk2 .go svg{stroke:#16243D}
 .pick:hover .go,.pick:focus-visible .go{transform:translateX(3px)}

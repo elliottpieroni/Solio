@@ -1,6 +1,6 @@
 // Service worker : l'app fonctionne hors ligne ; les fichiers de l'app sont rechargés depuis le réseau dès qu'il est disponible.
 // Au premier lancement on ne pré-charge que le strict nécessaire ; vues aériennes (thumbs/) et relief (zone/) se mettent en cache à l'usage.
-const V='terrasses-v85';
+const V='terrasses-v86';
 const SHELL=["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "visuels/v0.jpg", "visuels/v1.jpg", "visuels/v2.jpg", "visuels/v3.jpg", "visuels/v4.jpg", "visuels/v5.jpg", "visuels/v6.jpg", "visuels/v7.jpg", "visuels/v8.jpg", "visuels/v9.jpg", "visuels/v10.jpg", "visuels/v11.jpg", "visuels/v12.jpg", "visuels/v13.jpg", "visuels/v14.jpg", "visuels/v15.jpg"];
 // on ne garde en cache que les réponses réussies : une erreur (503, 404…) ne doit jamais remplacer un bon fichier
 const keep=(r,res)=>{if(res&&res.ok){const cp=res.clone();caches.open(V).then(c=>c.put(r,cp)).catch(()=>{});}return res;};
