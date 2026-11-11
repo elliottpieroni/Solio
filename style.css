@@ -627,3 +627,7 @@ body:has(.scr.on)::after{display:none}
 .tile.t1{background:radial-gradient(70% 60% at 72% 30%,rgba(255,176,0,.42),rgba(255,176,0,0) 70%),linear-gradient(160deg,#2b1d10,#1a130c)}
 .tile.t2{background:radial-gradient(70% 60% at 72% 30%,rgba(255,112,88,.40),rgba(255,112,88,0) 70%),linear-gradient(160deg,#2c1a14,#1a110d)}
 .tile.t2 .go{background:#FFB000;color:#3D2700}
+
+/* v68 : accueil — fond « bleu crépuscule » (variante B) */
+.tile.t1{background:radial-gradient(70% 60% at 72% 30%,rgba(255,176,0,.38),rgba(255,176,0,0) 70%),linear-gradient(160deg,#1d3a5c,#0f1d30)}
+.tile.t2{background:radial-gradient(70% 60% at 72% 30%,rgba(255,138,76,.36),rgba(255,138,76,0) 70%),linear-gradient(160deg,#233a4f,#111c2a)}
