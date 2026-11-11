@@ -480,17 +480,19 @@ function drawDial(){
 }
 function dialX(cx){const r=dial.getBoundingClientRect(),pad=6;
   selMin=clamp(Math.round((M0+(cx-r.left-pad)/(r.width-2*pad)*(M1-M0))/5)*5,M0,M1);schedule(true);}
-dial.addEventListener('pointerdown',e=>{stopPlay();dial.setPointerCapture(e.pointerId);scrubbing=true;dialX(e.clientX);});
+dial.addEventListener('pointerdown',e=>{stopPlay(true);dial.setPointerCapture(e.pointerId);scrubbing=true;dialX(e.clientX);});
 dial.addEventListener('pointermove',e=>{if(scrubbing&&dial.hasPointerCapture(e.pointerId))dialX(e.clientX);});
-function dialEnd(e){if(!scrubbing||playing)return;scrubbing=false;requestShadow(false);render(true,false);}
+function dialEnd(e){if(!scrubbing||playing)return;scrubbing=false;requestShadow(false);render(true,false);selFirstMap();}
 dial.addEventListener('pointerup',dialEnd);dial.addEventListener('pointercancel',dialEnd);
 dial.addEventListener('keydown',e=>{const d={ArrowLeft:-10,ArrowDown:-10,ArrowRight:10,ArrowUp:10,PageDown:-60,PageUp:60}[e.key];
-  if(d){e.preventDefault();stopPlay();selMin=clamp(selMin+d,M0,M1);schedule(true);}});
+  if(d){e.preventDefault();stopPlay(true);selMin=clamp(selMin+d,M0,M1);schedule(true);clearTimeout(keySelT);keySelT=setTimeout(selFirstMap,350);}});
 
 let playing=false,acc=0;
 const ICON_PLAY='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.500v13a1 1 0 0 0 1.500.9l10.500-6.500a1 1 0 0 0 0-1.700L9.500 4.600A1 1 0 0 0 8 5.500z"/></svg>';
 const ICON_PAUSE='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.200" height="14" rx="1.400"/><rect x="13.800" y="5" width="4.200" height="14" rx="1.400"/></svg>';
-function stopPlay(){if(!playing)return;playing=false;scrubbing=false;$('play').innerHTML=ICON_PLAY;$('play').setAttribute('aria-label','Lire la journée');requestShadow(false);render(true,false);}
+function stopPlay(noSel){if(!playing)return;playing=false;scrubbing=false;$('play').innerHTML=ICON_PLAY;$('play').setAttribute('aria-label','Lire la journée');requestShadow(false);render(true,false);if(!noSel)selFirstMap();}
+// quand le soleil change (curseur relâché, pause, touches, date, « maintenant »), on resélectionne le premier lieu de la nouvelle liste
+let keySelT=0;const selFirstMap=()=>{if(!G||SCRS.some(x=>$(x).classList.contains('on')))return;selFirst();};
 function startPlay(){if(!G)return;playing=true;scrubbing=true;$('play').innerHTML=ICON_PAUSE;$('play').setAttribute('aria-label','Mettre en pause');
   if(selMin>=M1-10)selMin=sunrise!=null?clamp(Math.ceil(sunrise/5)*5,M0,M1):M0;acc=selMin;let last=performance.now();
   (function tick(t){if(!playing)return;acc=Math.min(M1,acc+(t-last)*.075);last=t;const m=Math.round(acc/5)*5;
@@ -674,10 +676,10 @@ $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedu
 $('recenter').onclick=()=>{if(sel&&route&&route.p===sel)fitRoute(500);else goOverview(500);};
 $('zin').onclick=()=>zoomBy(1.4);$('zout').onclick=()=>zoomBy(1/1.4);
 $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
-  if(v.length===3&&v[0]){stopPlay();[dYear,dMonth,dDay]=[v[0],v[1]-1,v[2]];computeArc();if(G)computeDay();schedule(true);}};
+  if(v.length===3&&v[0]){stopPlay(true);[dYear,dMonth,dDay]=[v[0],v[1]-1,v[2]];computeArc();if(G)computeDay();schedule(true);selFirstMap();}};
 document.querySelector('.datebtn').addEventListener('click',()=>{try{$('date').showPicker();}catch(e){}});
-$('now').onclick=()=>{stopPlay();const n=parisNow();[dYear,dMonth,dDay]=[n.y,n.mo,n.d];
-  selMin=clamp(Math.round(n.min/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);};
+$('now').onclick=()=>{stopPlay(true);const n=parisNow();[dYear,dMonth,dDay]=[n.y,n.mo,n.d];
+  selMin=clamp(Math.round(n.min/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);selFirstMap();};
 // fenêtres modales : le focus y entre, y reste (Tab) et revient au bouton d'origine à la fermeture
 const MODAL={el:null,back:null};
 function modalOpen(el,first){MODAL.el=el;MODAL.back=document.activeElement;setTimeout(()=>{const f=first&&$(first);if(f)try{f.focus({preventScroll:true});}catch(e){}},60);}
@@ -820,7 +822,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v79',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v80',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
