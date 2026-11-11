@@ -729,7 +729,7 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   $('galgo').href=nav(p);$('galsv').href=sv(p);$('galcount').textContent='';$('galcr').textContent='';
   const slides=[];
   const svu=(svOk(p)&&SV[p.i].u)||null;if(svu)slides.push({u:svu,a:'',sv:1});
-  const add=l=>{for(const x of l)if(!slides.some(s=>s.u===x.u))slides.push(x);};
+  const pk=u=>String(u).replace(/(\/media)\?.*$/,'$1'),add=l=>{for(const x of l)if(!slides.some(s=>pk(s.u)===pk(x.u)))slides.push(x);};
   if(GP[p.i]&&GP[p.i].u)add([{u:GP[p.i].u,a:GP[p.i].a}]);
   const draw=()=>{const list=slides.length?slides.filter(s=>!s.sv).concat(slides.filter(s=>s.sv)):[{u:PHOTOS[p.i]||visOf(p),a:'',fb:1}];
     sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.src=s.u;
@@ -744,7 +744,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v74',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v75',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
