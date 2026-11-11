@@ -741,3 +741,12 @@ body:has(.scr.on)::after{display:none}
 .ask2 .sticker{margin:0;background:#FFF4E4;color:#16243D;box-shadow:0 6px 0 rgba(0,0,0,.22);border-radius:18px;padding:12px 18px;font:400 min(25px,6.4vw)/1.1 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.02em;text-align:center;transform:translateY(-50%) rotate(-3deg)}
 .ask2 .sticker b{font:inherit;color:inherit;background:none;letter-spacing:inherit}
 @media (prefers-reduced-motion:reduce){.pick .art svg *{animation:none!important}}
+
+/* v87 : photos des lieux — pas de rectangle noir (fond chaud + apparition après chargement ; plus de flou « backdrop » sur le défilement, source connue de rectangles noirs sous iOS) */
+.galsl figure{background:linear-gradient(135deg,#3a2b17,#241a0d);transform:translateZ(0)}
+.galsl figure img{opacity:1;transition:opacity .25s ease}
+.galsl figure.ld img{opacity:0}
+.gal *,.gal *::before,.gal *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.galarr{background:rgba(20,14,4,.45)!important}
+.galtop button{background:rgba(20,14,4,.45)!important}
+.galinfo::before{background:rgba(20,14,4,.12)!important}

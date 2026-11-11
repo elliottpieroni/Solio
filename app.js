@@ -820,8 +820,9 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   const pk=u=>{const m=/places\/[^/]+\/photos\/[^/?]+/.exec(String(u));return m?m[0]:String(u).replace(/(\/media)\?.*$/,'$1');},add=l=>{for(const x of l)if(!slides.some(s=>pk(s.u)===pk(x.u)))slides.push(x);};
   if(GP[p.i]&&GP[p.i].u)add([{u:GP[p.i].u,a:GP[p.i].a}]);
   const draw=()=>{const list=slides.length?slides.filter(s=>!s.sv).concat(slides.filter(s=>s.sv)):[{u:PHOTOS[p.i]||visOf(p),a:'',fb:1}];
-    sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.loading=i<2?'eager':'lazy';im.src=s.u;
-      im.onerror=()=>{f.remove();upd();};f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
+    sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');f.className='ld';const im=new Image();im.alt=p.n;
+      // v87 : toutes les photos sont demandées tout de suite ; la photo n'est montrée qu'une fois chargée (plus de rectangle noir en attendant)
+      im.onload=()=>{f.classList.remove('ld');};im.onerror=()=>{f.remove();upd();};im.src=s.u;f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
   const upd=()=>{const fs=[...sl.children],w=sl.clientWidth||1,i=Math.min(fs.length-1,Math.round(sl.scrollLeft/w));
     $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';{const d=$('galdots');if(d.children.length!==fs.length){d.replaceChildren();fs.forEach(()=>d.appendChild(document.createElement('i')));}[...d.children].forEach((e,n)=>e.classList.toggle('on',n===i));}$('galprev').classList.toggle('off',fs.length<2||i<=0);$('galnext').classList.toggle('off',fs.length<2||i>=fs.length-1);$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
   sl.onscroll=upd;draw();$('galprev').onclick=()=>sl.scrollBy({left:-sl.clientWidth,behavior:'smooth'});$('galnext').onclick=()=>sl.scrollBy({left:sl.clientWidth,behavior:'smooth'});
@@ -832,7 +833,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v86',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v87',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
