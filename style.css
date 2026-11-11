@@ -646,3 +646,9 @@ body:has(.scr.on)::after{display:none}
 .panel{padding-bottom:0}
 .time{padding-bottom:calc(env(safe-area-inset-bottom,0px)*.3 + 1px)}
 #dial{height:90px;margin-top:2px}
+
+/* v73 : le bouton « Voir les terrasses ensoleillées » descend un peu */
+.sheet{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)*.5)}
+/* v73 : fiche d'un lieu — le bord haut de la partie floutée passe au milieu de la pastille jaune */
+.galinfo{background:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding-top:14px}
+.galinfo::before{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:0;top:var(--chipmid,44px);border-radius:28px 28px 0 0;background:rgba(24,17,6,.08);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);pointer-events:none}
