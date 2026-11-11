@@ -744,7 +744,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v71',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v72',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
 try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
@@ -797,7 +797,7 @@ document.querySelectorAll('.langbtn').forEach(b=>{b.textContent=LANG==='en'?'FR'
   b.onclick=()=>{try{localStorage.setItem('solio-lang',LANG==='en'?'fr':'en');}catch(e){}location.reload();};});
 if(LANG==='en'){(()=>{
   const EX={'Autour de':'Around','terrasses, au soleil seulement':'sunny terraces only','Tout':'All','Boire':'Drink','Manger':'Eat','Terrasses à l’ombre':'Shaded terraces','Maintenant':'Now','h':':',
-   'Localisateur de terrasses ensoleillées autour de toi':'Find sunny terraces around you','Un coin de':'A touch of','soleil':'sunshine','pour…':'for…','C’est parti':'Let’s go','un verre':'a drink','Bars, cafés, pubs':'Bars, cafés, pubs','Miam':'Yum','dehors':'outside','Restaurants, glaciers, snacks':'Restaurants, ice cream, snacks',
+   'Localisateur de terrasses ensoleillées autour de toi':'Find sunny terraces around you','Un coin de':'A touch of','soleil':'sunshine','pour…':'to…','C’est parti':'Let’s go','un verre':'a drink','Bars, cafés, pubs':'Bars, cafés, pubs','Miam':'Yum','dehors':'outside','Restaurants, glaciers, snacks':'Restaurants, ice cream, snacks',
    'Voir sur la carte':'View on map','Jusqu’où veux-tu marcher ?':'How far do you want to walk?','min à pied':'min walk','Combien de min de soleil restantes au minimum ?':'At least how many minutes of sun left?','min de soleil':'min of sun','Voir les terrasses ensoleillées':'See sunny terraces',
    'Retour':'Back','Y aller':'Directions','Y aller ↗':'Directions ↗','Plan et ombres':'Map & shadows','Photo aérienne':'Aerial photo','Fermer':'Close',
    'Carte des ombres':'Shadow map','Retour aux meilleurs spots':'Back to top spots','Point de départ':'Starting point','Seulement les terrasses au soleil':'Only sunny terraces','Zoom avant':'Zoom in','Zoom arrière':'Zoom out','Afficher la liste':'Show list','Boire ou manger':'Drink or eat','Afficher aussi les terrasses à l’ombre':'Also show shaded terraces','Changer le rayon':'Change radius','Lire la journée':'Play the day','Heure':'Time','Changer : boire ou manger':'Switch: drink or eat','Autour de moi':'Around me','Minutes de marche maximum':'Maximum walking minutes','Minutes de soleil restantes minimum':'Minimum minutes of sun left','Photos du lieu':'Place photos','Photo précédente':'Previous photo','Photo suivante':'Next photo','Vue agrandie':'Enlarged view',
