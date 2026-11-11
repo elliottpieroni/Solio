@@ -569,7 +569,7 @@ $('lbPlan').onclick=()=>setLB(true);$('lbPhoto').onclick=()=>setLB(false);
 let readyRes;const READY=new Promise(r=>{readyRes=r;});
 const SCRS=['splash','ask','top5'];
 function go(id){
-  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a',ask:'#FFB000'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
+  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a',ask:'#FFE14D'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
   for(const s of SCRS){const e=$(s);
     if(s===id){e.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>e.classList.add('on')));}
     else if(e.classList.contains('on')||!e.hidden){e.classList.remove('on');setTimeout(()=>{if(!e.classList.contains('on'))e.hidden=true;},560);}}
@@ -591,9 +591,9 @@ function burst(x,y,host){const cols=['#ffb000','#ffd36b','#ff7058','#ffffff','#f
 function fitTitle(){try{const a=$('ask'),p2=document.querySelector('.pick.pk2');if(!a||!p2)return;
   const wd=t=>{const s=document.createElement('span');s.setAttribute('aria-hidden','true');s.style.cssText="position:absolute;left:-9999px;top:0;white-space:nowrap;font:400 100px 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase";s.textContent=t;document.body.appendChild(s);const w=s.getBoundingClientRect().width;s.remove();return w;};
   const wm=wd('Manger'),wb=wd('Boire');if(!wm||!wb)return;
-  const W=document.documentElement.clientWidth,pl=parseFloat(getComputedStyle(p2).paddingLeft)||16,pr=parseFloat(getComputedStyle(p2).paddingRight)||16;
+  const W=document.documentElement.clientWidth,pl=parseFloat(getComputedStyle(p2).paddingLeft)||24,pr=parseFloat(getComputedStyle(p2).paddingRight)||24;
   // MANGER dépasse d'environ 7 % de la largeur (seul le R est coupé) ; BOIRE reste entier, à gauche de la flèche (52 px + marges)
-  const sz=Math.min((W-pl+W*.07)/wm*100,(W-pl-pr-52-12)/wb*100,150);
+  const sz=Math.min((W-pl+W*.07)/wm*100,(W-pl-pr-60-12)/wb*100,150);
   a.style.setProperty('--tsz',Math.max(60,sz).toFixed(1)+'px');}catch(e){}}
 fitTitle();addEventListener('resize',fitTitle);
 if(document.fonts){document.fonts.ready.then(fitTitle);document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',fitTitle);}
@@ -833,7 +833,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v87',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v88',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
