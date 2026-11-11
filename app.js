@@ -569,7 +569,7 @@ $('lbPlan').onclick=()=>setLB(true);$('lbPhoto').onclick=()=>setLB(false);
 let readyRes;const READY=new Promise(r=>{readyRes=r;});
 const SCRS=['splash','ask','top5'];
 function go(id){
-  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
+  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a',ask:'#FFE14D'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
   for(const s of SCRS){const e=$(s);
     if(s===id){e.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>e.classList.add('on')));}
     else if(e.classList.contains('on')||!e.hidden){e.classList.remove('on');setTimeout(()=>{if(!e.classList.contains('on'))e.hidden=true;},560);}}
@@ -587,7 +587,7 @@ function burst(x,y,host){const cols=['#ffb000','#ffd36b','#ff7058','#ffffff','#f
     if(i%3===0){s.style.borderRadius='3px';s.style.width='8px';s.style.height='14px';}host.appendChild(s);
     const a=Math.random()*Math.PI*2,d=70+Math.random()*110;
     s.animate([{transform:'translate(0,0) rotate(0) scale(1)',opacity:1},{transform:'translate('+Math.cos(a)*d+'px,'+(Math.sin(a)*d+50)+'px) rotate('+(Math.random()*540)+'deg) scale(.4)',opacity:0}],{duration:750+Math.random()*250,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=()=>s.remove();}}
-document.querySelectorAll('.tile').forEach(b=>{
+document.querySelectorAll('.pick').forEach(b=>{
   const art=b.querySelector('.art');
   const tilt=e=>{const r=b.getBoundingClientRect(),nx=(e.clientX-r.left)/r.width-.5,ny=(e.clientY-r.top)/r.height-.5;art.style.setProperty('--ry',(nx*26)+'deg');art.style.setProperty('--rx',(-ny*22)+'deg');};
   b.addEventListener('pointermove',tilt);b.addEventListener('pointerdown',tilt);
@@ -822,7 +822,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v80',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v81',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
@@ -893,7 +893,7 @@ if(LANG==='en'){(()=>{
   const FR=[[/Vous êtes hors de la zone couverte \(commune d’Antibes\)\. Point de départ : /,'You are outside the covered area (Antibes). Starting point: '],[/Soleil jusqu’au soir/g,'Sun until evening'],[/Soleil jusqu’à/g,'Sun until'],[/Ombre jusqu’au coucher/g,'Shade until sunset'],[/Ombre · soleil à/g,'Shade · sun at'],[/ombres à/g,'shade at'],[/ min à pied/g,' min walk'],[/· terrasse \?/g,'· terrace ?'],[/· terrasse/g,'· terrace'],
     [/^Glacier(?= ·|$)/,'Ice cream'],[/Restauration rapide/g,'Fast food'],[/Lever (\d+) h (\d\d) · coucher/g,'Sunrise $1:$2 · sunset'],[/^(\d+) h$/,'$1:00'],[/(\d+) h (\d\d)/g,'$1:$2'],[/(\d),(\d) km/g,'$1.$2 km'],[/^Agrandir la vue aérienne de /,'Enlarge aerial view of '],[/contributeur/g,'contributor']];
   const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
-    if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.tile')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}
+    if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.pick')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}
     if(r==null){r=core;for(const [re,t] of FR)r=r.replace(re,t);}return m[1]+r+m[3];};
   const doText=n=>{if(n.parentElement&&n.parentElement.closest&&n.parentElement.closest('#galuv,.csun b'))return;const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
   const doAttr=e=>{for(const a of ['aria-label','title']){const v=e.getAttribute&&e.getAttribute(a);if(v){const r=tr(v);if(r!==v)e.setAttribute(a,r);}}};
