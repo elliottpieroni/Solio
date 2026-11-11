@@ -569,7 +569,7 @@ $('lbPlan').onclick=()=>setLB(true);$('lbPhoto').onclick=()=>setLB(false);
 let readyRes;const READY=new Promise(r=>{readyRes=r;});
 const SCRS=['splash','ask','top5'];
 function go(id){
-  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a',ask:'#FFE14D'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
+  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',{splash:'#ffd23a',ask:'#FFB000'}[id]||'#1c1712');document.documentElement.style.backgroundColor='#1c1712';}catch(e){}
   for(const s of SCRS){const e=$(s);
     if(s===id){e.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>e.classList.add('on')));}
     else if(e.classList.contains('on')||!e.hidden){e.classList.remove('on');setTimeout(()=>{if(!e.classList.contains('on'))e.hidden=true;},560);}}
@@ -830,7 +830,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v84',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v85',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
