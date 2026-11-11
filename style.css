@@ -635,3 +635,9 @@ body:has(.scr.on)::after{display:none}
 /* v69 : barres de Safari — le bord haut/bas de la page est sombre dès que l'intro est finie */
 #app{background:#1c1712}
 .splash{background:linear-gradient(180deg,#ffd23a 0%,#ffb000 48%,#ff7a45 100%)}
+
+/* v70 : « Jusqu'où marcher ? » — on retrouve la police douce d'avant (Outfit fin), en gardant le verre sombre */
+.sheet h3{font:300 30px/1.08 var(--display);letter-spacing:-.015em}
+.sheet .h3b{font:300 23px/1.15 var(--display);letter-spacing:-.01em}
+.wread b{font:200 76px/0.9 var(--display);letter-spacing:-.03em}
+.wread.w2 b{font-size:48px}
