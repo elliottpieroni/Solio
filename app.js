@@ -1,5 +1,7 @@
 const LANG=(()=>{try{return localStorage.getItem('solio-lang')==='en'?'en':'fr';}catch(e){return 'fr';}})();
 const $=id=>document.getElementById(id);
+// lecture du stockage local : une valeur absente, corrompue ou de mauvais type donne toujours un objet vide
+const lsj=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'{}');return v&&typeof v==='object'&&!Array.isArray(v)?v:{};}catch(e){return {};}};
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const R2D=180/Math.PI,D2R=Math.PI/180,LAT=43.581,LON=7.124,KX=111320*Math.cos(LAT*D2R),KY=110574;
 const KIND={restaurant:'Restaurant',cafe:'Café',bar:'Bar',pub:'Pub',fast_food:'Restauration rapide',ice_cream:'Glacier'};
@@ -7,7 +9,7 @@ const BOIRE=new Set(['bar','pub','cafe']);
 const PLACES=[['Place Nationale',136,27],['Marché provençal',288,-8],['Musée Picasso',343,-32],['Plage de la Gravette',401,190],['Port Vauban',376,640],['Place de Gaulle',-281,-48],['Place de la Poste',-105,70],...[['Juan-les-Pins',-1250,-1183],['Cap d’Antibes (la Garoupe)',387,-2930]].filter(([,x,y])=>ZIDX.tiles.some(([i,j])=>x>=ZIDX.x0+i*ZIDX.ts&&x<ZIDX.x0+(i+1)*ZIDX.ts&&y<=ZIDX.y1-j*ZIDX.ts&&y>ZIDX.y1-(j+1)*ZIDX.ts))];
 const P=PD.map(([n,k,x,y,o],i)=>({i,n,k,x,y,o}));
 // terrasse : OpenStreetMap, complété par terrasses.json (Google : 2 = confirmée, 1 = avis qui en parlent, 0 = pas de terrasse)
-let TERR={},MAN={};try{MAN=JSON.parse(localStorage.getItem('terr-manual')||'{}');}catch(e){}
+let TERR={},MAN=lsj('terr-manual');
 // MAN : choix faits à la main (revision.html) ; 2 = terrasse, 0 = pas de terrasse, -1 = pas sûr
 const hasT=p=>MAN[p.i]===2?true:MAN[p.i]===0?false:TERR[p.i]!=null?TERR[p.i]>0:!!(p.o||p.pr);
 const terrLabel=p=>MAN[p.i]===2||TERR[p.i]>0||p.o?' · terrasse':' · terrasse ?';
@@ -39,12 +41,38 @@ const ZONE={x0:ZIDX.x0,y1:ZIDX.y1,nx:ZIDX.nx,ny:ZIDX.ny,ts:ZIDX.ts,max:20};ZONE.
 const TS=ZONE.ts,TA=new Array(ZONE.nx*ZONE.ny),TILES=new Map(),TLOAD=new Map(),ZSET=new Set(ZIDX.tiles.map(t=>t[0]+'_'+t[1]));
 const NTH=235; // les 235 premiers lieux ont une vue aérienne (thumbs/)
 const bbox=c=>{let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let i=0;i<c.length;i+=2){x0=Math.min(x0,c[i]);x1=Math.max(x1,c[i]);y0=Math.min(y0,c[i+1]);y1=Math.max(y1,c[i+1]);}return{c,x0,x1,y0,y1};};
-async function gunzip(buf){return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();}
+// décompression gzip de secours (iOS < 16.4 : pas de DecompressionStream)
+function inflateGz(u8){let p=10;const fl=u8[3];
+  if(u8[0]!==31||u8[1]!==139)throw new Error('gzip invalide');
+  if(fl&4)p+=2+(u8[p]|u8[p+1]<<8);if(fl&8)while(u8[p++]);if(fl&16)while(u8[p++]);if(fl&2)p+=2;
+  const n=u8.length,isz=(u8[n-4]|u8[n-3]<<8|u8[n-2]<<16|u8[n-1]<<24)>>>0,out=new Uint8Array(isz);let op=0,bb=0,bc=0;
+  const bits=k=>{while(bc<k){if(p>=n)throw new Error('gzip tronqué');bb|=u8[p++]<<bc;bc+=8;}const v=bb&((1<<k)-1);bb>>>=k;bc-=k;return v;};
+  const mk=(ln,m)=>{const cnt=new Uint16Array(16),sym=new Uint16Array(m),off=new Uint16Array(16);for(let i=0;i<m;i++)cnt[ln[i]]++;cnt[0]=0;for(let i=1;i<15;i++)off[i+1]=off[i]+cnt[i];for(let i=0;i<m;i++)if(ln[i])sym[off[ln[i]]++]=i;return{cnt,sym};};
+  const dec=h=>{let code=0,first=0,idx=0;for(let l=1;l<16;l++){code|=bits(1);const c=h.cnt[l];if(code-c<first)return h.sym[idx+(code-first)];idx+=c;first+=c;first<<=1;code<<=1;}throw new Error('gzip corrompu');};
+  const LB=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258],LX=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0],
+    DB=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577],DX=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13],
+    ORD=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];let fl_,fd_;
+  for(;;){const last=bits(1),type=bits(2);
+    if(type===0){bb=0;bc=0;const len=u8[p]|u8[p+1]<<8;p+=4;if(op+len>isz||p+len>n)throw new Error('gzip corrompu');for(let i=0;i<len;i++)out[op++]=u8[p++];}
+    else{let hl,hd;
+      if(type===1){if(!fl_){const l=new Uint8Array(288);l.fill(8,0,144);l.fill(9,144,256);l.fill(7,256,280);l.fill(8,280,288);fl_=mk(l,288);fd_=mk(new Uint8Array(30).fill(5),30);}hl=fl_;hd=fd_;}
+      else if(type===2){const nl=bits(5)+257,nd=bits(5)+1,nc=bits(4)+4,cl=new Uint8Array(19);for(let i=0;i<nc;i++)cl[ORD[i]]=bits(3);
+        const hc=mk(cl,19),ln=new Uint8Array(nl+nd);let i=0;
+        while(i<nl+nd){const sy=dec(hc);if(sy<16)ln[i++]=sy;else{let r,v=0;if(sy===16){if(!i)throw new Error('gzip corrompu');v=ln[i-1];r=3+bits(2);}else if(sy===17)r=3+bits(3);else r=11+bits(7);while(r--&&i<nl+nd)ln[i++]=v;}}
+        hl=mk(ln.subarray(0,nl),nl);hd=mk(ln.subarray(nl),nd);}
+      else throw new Error('gzip corrompu');
+      for(;;){let sy=dec(hl);if(sy<256){if(op>=isz)throw new Error('gzip corrompu');out[op++]=sy;}else if(sy===256)break;else{sy-=257;if(sy>=29)throw new Error('gzip corrompu');const len=LB[sy]+bits(LX[sy]),ds=dec(hd),dist=DB[ds]+bits(DX[ds]);if(dist>op||op+len>isz)throw new Error('gzip corrompu');for(let i=0;i<len;i++){out[op]=out[op-dist];op++;}}}}
+    if(last)break;}
+  if(op!==isz)throw new Error('gzip incomplet');return out.buffer;}
+async function gunzip(buf){
+  if(typeof DecompressionStream==='function'){try{return await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();}catch(e){console.warn('DecompressionStream',e);}}
+  return inflateGz(new Uint8Array(buf));}
 function unrow(d,off,n){for(let r=0;r<n;r++){let a=0;const o=off+r*n;for(let c=0;c<n;c++){a+=d[o+c];d[o+c]=a;}}}
 function loadTile(i,j){const k=i+'_'+j;if(TLOAD.has(k))return TLOAD.get(k);if(!ZSET.has(k))return Promise.resolve(null);
   const pr=(async()=>{
-    const r=await fetch('zone/t_'+k+'.bin');if(!r.ok)throw new Error('tuile '+k);
-    const d=new Int16Array(await gunzip(await r.arrayBuffer())),T2=TS/2;
+    const ac=typeof AbortController==='function'?new AbortController():null,to=setTimeout(()=>{if(ac)ac.abort();},20000);let buf;
+    try{const r=await fetch('zone/t_'+k+'.bin',ac?{signal:ac.signal}:undefined);if(!r.ok)throw new Error('tuile '+k+' : erreur '+r.status);buf=await r.arrayBuffer();}finally{clearTimeout(to);}
+    const d=new Int16Array(await gunzip(buf)),T2=TS/2;
     if(d.length!==TS*TS+T2*T2)throw new Error('tuile '+k+' incomplète');
     unrow(d,0,TS);unrow(d,TS*TS,T2);
     const t={i,j,k,x0:ZONE.x0+i*TS,y1:ZONE.y1-j*TS,S:d.subarray(0,TS*TS),T:d.subarray(TS*TS),b:[],c:null};
@@ -65,9 +93,13 @@ function openSky(x,y){let best=null,bd=1e9;
   return best||[x,y];}
 function tilesFor(cx,cy,R){const out=[],i0=Math.max(0,Math.floor((cx-R-ZONE.x0)/TS)),i1=Math.min(ZONE.nx-1,Math.floor((cx+R-ZONE.x0)/TS)),j0=Math.max(0,Math.floor((ZONE.y1-cy-R)/TS)),j1=Math.min(ZONE.ny-1,Math.floor((ZONE.y1-cy+R)/TS));
   for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(ZSET.has(i+'_'+j))out.push([i,j]);return out;}
+const RELIEF_ERR='Le relief n’a pas pu être chargé';
 async function ensureArea(cx,cy,R){const miss=tilesFor(cx,cy,R).filter(([i,j])=>!TA[j*ZONE.nx+i]);if(!miss.length)return false;
   await Promise.all(miss.map(([i,j])=>loadTile(i,j)));
-  prepPlaces();return true;}
+  prepPlaces();
+  if(miss.some(([i,j])=>!TA[j*ZONE.nx+i]))throw new Error(RELIEF_ERR); // une tuile manque : on le dit, on ne l'interprète pas comme « aucune terrasse »
+  return true;}
+const areaLost=()=>{const [x,y]=PLACES[from].slice(1);return tilesFor(x,y,areaR()).some(([i,j])=>!TA[j*ZONE.nx+i]);};
 const areaR=()=>Math.max(dist,walkMin*WALK,500)+300;
 const needArea=()=>{const [x,y]=PLACES[from].slice(1);return ensureArea(x,y,areaR());};
 // un lieu est prêt quand sa tuile et ses voisines sont chargées : on calcule alors son ensoleillement
@@ -82,15 +114,20 @@ function prepPlaces(){let n=0;
 // ---- état
 const M0=420,M1=1380,STEP=10,NM=(M1-M0)/STEP;
 const RADII=[200,400,700,1000,1500],WALK=80; // 80 m par minute de marche
-const now=new Date();
-let dYear=now.getFullYear(),dMonth=now.getMonth(),dDay=now.getDate();
-let selMin=Math.min(1380,Math.max(420,Math.round((now.getHours()*60+now.getMinutes())/5)*5));
+// « maintenant » = l'heure d'Antibes (Europe/Paris), pas celle de l'appareil
+const PTZ=(()=>{try{return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',hourCycle:'h23'});}catch(e){return null;}})();
+function parisNow(){if(PTZ)try{const o={};for(const q of PTZ.formatToParts(new Date()))o[q.type]=+q.value;if(o.year&&o.month&&o.day)return{y:o.year,mo:o.month-1,d:o.day,min:(o.hour%24)*60+o.minute};}catch(e){}
+  const n=new Date();return{y:n.getFullYear(),mo:n.getMonth(),d:n.getDate(),min:n.getHours()*60+n.getMinutes()};}
+const now=parisNow();
+let dYear=now.y,dMonth=now.mo,dDay=now.d;
+let selMin=Math.min(1380,Math.max(420,Math.round(now.min/5)*5));
 let showShade=false,cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
-try{const s=JSON.parse(localStorage.getItem('terr-v2')||'{}');
+try{const s=lsj('terr-v2');
   if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
   if(['all','boire','manger'].includes(s.cat))cat=s.cat;if([15,30,45,60,75,90,105,120].includes(s.sunNeed))sunNeed=s.sunNeed;}catch(e){}
-// défaut provisoire : Plage de la Gravette à 12 h 30 (mettre DEF_MIN=null pour reprendre l'heure réelle)
-const DEF_MIN=750,DEF_PLACE='Plage de la Gravette';
+// DEF_MIN : heure fixe pour les essais (null = heure réelle d'Antibes). DEF_PLACE : lieu de départ par défaut ;
+// DEF_LOCK=true : pas de géolocalisation automatique, on part toujours de DEF_PLACE (le bouton « Autour de moi » reste actif)
+const DEF_MIN=null,DEF_PLACE='Plage de la Gravette',DEF_LOCK=true;
 {const i=PLACES.findIndex(q=>q[0]===DEF_PLACE);if(i>=0)from=i;if(typeof DEF_MIN==='number')selMin=DEF_MIN;}
 function save(){try{localStorage.setItem('terr-v2',JSON.stringify({dist,from,cat,fSun,walkMin,sunNeed}))}catch(e){}}
 
@@ -174,9 +211,12 @@ function requestShadow(fast){clearTimeout(shT);
   else shT=setTimeout(()=>{computeShadow(false);drawMap();
     if(G&&!document.hidden)ensureArea(cxw,cyw,Math.hypot(mc.clientWidth,mc.clientHeight)/scale/2+250).then(c=>{if(c){filter();schedule(true);}}).catch(()=>{});},150);}
 
+const TB=(()=>{const t=ZIDX.tiles,i0=Math.min(...t.map(a=>a[0])),i1=Math.max(...t.map(a=>a[0]))+1,j0=Math.min(...t.map(a=>a[1])),j1=Math.max(...t.map(a=>a[1]))+1;return{xa:ZONE.x0+i0*TS,xb:ZONE.x0+i1*TS,ya:ZONE.y1-j1*TS,yb:ZONE.y1-j0*TS};})();
 let RES=[];
+function updRecenter(){const b=$('recenter');if(!b)return;const [fx,fy]=PLACES[from].slice(1),q=w2s(fx,fy),w=mc.clientWidth,h=mc.clientHeight,off=q[0]<0||q[1]<0||q[0]>w||q[1]>h;if(b.hidden!==!off)b.hidden=!off;}
 function drawMap(){
   if(!G)return;
+  cxw=clamp(cxw,TB.xa,TB.xb);cyw=clamp(cyw,TB.ya,TB.yb);
   const dpr=devicePixelRatio||1,w=mc.clientWidth,h=mc.clientHeight;if(!w||!h)return;
   if(mc.width!==Math.round(w*dpr)||mc.height!==Math.round(h*dpr)){mc.width=Math.round(w*dpr);mc.height=Math.round(h*dpr);}
   mx.setTransform(dpr,0,0,dpr,0,0);
@@ -191,6 +231,7 @@ function drawMap(){
   mx.fillStyle='rgba(47,107,255,.22)';mx.beginPath();mx.arc(c[0],c[1],15,0,Math.PI*2);mx.fill();mx.fillStyle='#2f6bff';mx.strokeStyle='#fff';mx.lineWidth=3;mx.beginPath();mx.arc(c[0],c[1],7,0,Math.PI*2);mx.fill();mx.stroke();
   }
   if(showR)drawRoute(mx);
+  updRecenter();
   // terrasses
   let onQ=null;
   for(const {p,st} of RES){const q=w2s(p.sx,p.sy);if(q[0]<-30||q[1]<-30||q[0]>w+30||q[1]>h+30)continue;
@@ -284,7 +325,7 @@ function fly(tx,ty,sc,ms){
     if(k<1)requestAnimationFrame(step);else requestShadow(false);})(t0);
 }
 function layout(){const ar=$('app').getBoundingClientRect(),pr=$('panel').getBoundingClientRect(),tr=$('top').getBoundingClientRect();
-  cy0=((tr.bottom-ar.top)+(pr.top-ar.top))/2;const z=$('zoom');if(z){z.style.top='auto';z.style.transform='none';z.style.bottom=Math.round(ar.bottom-pr.top+12)+'px';}}
+  cy0=((tr.bottom-ar.top)+(pr.top-ar.top))/2;const rc=$('recenter');if(rc)rc.style.bottom=Math.round(ar.bottom-pr.top+12)+'px';const z=$('zoom');if(z){z.style.top='auto';z.style.transform='none';z.style.bottom=Math.round(ar.bottom-pr.top+12)+'px';}}
 function visH(){const pr=$('panel').getBoundingClientRect(),tr=$('top').getBoundingClientRect();return Math.max(200,pr.top-tr.bottom);}
 function fitScale(){return clamp(.46*Math.min(mc.clientWidth,visH())/dist,.18,5);}
 function goOverview(ms){const [fx,fy]=PLACES[from].slice(1);fly(fx,fy,fitScale(),ms);}
@@ -309,7 +350,7 @@ mc.addEventListener('wheel',e=>{e.preventDefault();flightId++;scale=clamp(scale*
 // ---- cartes
 const CARDS=new Map();
 function splitName(el,n){el.textContent='';const w=n.split(' ');if(w.length<2){el.textContent=n;return;}let bi=1,bd=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(w.slice(0,i).join(' ').length-w.slice(i).join(' ').length);if(d<bd){bd=d;bi=i;}}el.append(w.slice(0,bi).join(' '),document.createElement('br'),w.slice(bi).join(' '));}
-function sunParts(txt,sm,b){const m=/^(.*?)(\d{1,2})\s?h\s?(\d{2})$/.exec(txt);b.textContent='';if(m){sm.textContent=m[1].trim();b.className='';b.append(m[2]+' h',document.createElement('br'),m[3]);}else{sm.textContent='';b.className='sm';b.textContent=txt;}}
+function sunParts(txt,sm,b){const m=/^(.*?)(\d{1,2})\s?h\s?(\d{2})$/.exec(txt);b.textContent='';if(m){sm.textContent=m[1].trim();b.className='';if(LANG==='en')b.textContent=m[2]+':'+m[3];else b.append(m[2]+' h',document.createElement('br'),m[3]);}else{sm.textContent='';b.className='sm';b.textContent=txt;}}
 function makeCard(p){
   const el=document.createElement('article');el.className='card';el.dataset.i=p.i;
   const th=document.createElement('button');th.className='th';th.setAttribute('aria-label','Agrandir la vue aérienne de '+p.n);
@@ -332,30 +373,33 @@ function paintCard(el,p,d,st){
   if(el._ckt!==ck){el._ckt=ck;el._ck.textContent=ck;}
   el.classList.toggle('on',p===sel);
 }
-let trayMode='';
+let trayMode='',BOOTERR=false,BOOTP=null;
 function renderCards(){
   const tray=$('tray');
-  if(!G){if(trayMode!=='skel'){trayMode='skel';tray.innerHTML='<div class="skel">Calcul des ombres sur le relief LiDAR…</div>';}return;}
+  const errBox=()=>{const e=document.createElement('div');e.className='empty';e.innerHTML='<b></b><span></span><div class="erow"><button class="chip" data-a="retry">Réessayer</button></div>';e.querySelector('b').textContent=RELIEF_ERR;e.querySelector('span').textContent='Vérifie ta connexion, puis réessaie.';return e;};
+  if(!G){const sig=BOOTERR?'err':'skel';if(trayMode!==sig){trayMode=sig;if(BOOTERR)tray.replaceChildren(errBox());else tray.innerHTML='<div class="skel">Calcul des ombres sur le relief LiDAR…</div>';}return;}
+  if(!RES.length&&areaLost()){if(trayMode!=='err'){trayMode='err';tray.replaceChildren(errBox());}return;}
   if(!RES.length){
-    const sig='empty'+dist+fSun+from+cat;if(trayMode===sig)return;trayMode=sig;
+    const sig='empty'+dist+fSun+from+cat+top5Mode;if(trayMode===sig)return;trayMode=sig;
     const [fn]=PLACES[from];
     const e=document.createElement('div');e.className='empty';
     e.innerHTML='<b></b><span></span><div class="erow"></div>';
     e.querySelector('b').textContent=fSun?'Aucune terrasse au soleil à cette heure':'Aucune terrasse dans ce rayon';
     e.querySelector('span').textContent='Rayon de '+(dist<1000?dist+' m':(dist/1000).toString().replace('.',',')+' km')+' autour de '+fn+'. Déplacez le curseur de l’heure pour voir passer le soleil.';
     const row=e.querySelector('.erow');
-    if(dist<RADII[RADII.length-1]){const b=document.createElement('button');b.className='chip';b.dataset.a='wide';b.textContent='Élargir le rayon';row.appendChild(b);}
+    if(top5Mode?walkMin<20:dist<RADII[RADII.length-1]){const b=document.createElement('button');b.className='chip';b.dataset.a='wide';b.textContent='Élargir le rayon';row.appendChild(b);}
     
     tray.replaceChildren(e);return;
   }
-  const list=RES.slice(0,60),els=[];
+  const list=RES.slice(0,CAP),els=[];
   for(const {p,d,st} of list){const el=CARDS.get(p.i)||makeCard(p);paintCard(el,p,d,st);els.push(el);}
   const same=trayMode==='cards'&&tray.children.length===els.length&&els.every((e,i)=>tray.children[i]===e);
   if(!same){trayMode='cards';tray.replaceChildren(...els);if(sel)centerCard(sel,false);}
   thumbsFor();
 }
 $('tray').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;
-  if(b.dataset.a==='wide'){dist=RADII.find(r=>r>dist)||dist;save();goOverview();schedule(false);}
+  if(b.dataset.a==='retry'){boot();return;}
+  if(b.dataset.a==='wide'){if(top5Mode){walkMin=Math.min(20,walkMin+5);dist=walkMin*WALK;}else dist=RADII.find(r=>r>dist)||dist;save();goOverview();schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});}
   else{fSun=false;save();schedule(false);}});
 
 let prog=0,sT=0;
@@ -406,7 +450,7 @@ function drawDial(){
   else if(sunrise!=null){g.fillStyle=TK.sun;g.globalAlpha=.7;g.fillRect(X(Math.max(M0,sunrise)),y0,X(Math.min(M1,sunset))-X(Math.max(M0,sunrise)),8);g.globalAlpha=1;}
   g.restore();
   // repères d'heures
-  g.fillStyle='rgba(255,255,255,.72)';g.font='500 11px "DM Sans",sans-serif';g.textAlign='center';g.textBaseline='alphabetic';
+  g.fillStyle='rgba(255,255,255,.72)';g.font='500 12px "DM Sans",sans-serif';g.textAlign='center';g.textBaseline='alphabetic';
   for(const h of [8,12,16,20]){g.fillText(LANG==='en'?h+':00':h+' h',X(h*60),H-3);}
   // curseur + soleil
   const e=elAt(selMin),up=e>.5*D2R,tx=X(selMin),ty=up?Y(e):y0-9;
@@ -450,6 +494,7 @@ function filter(){
   list.sort((a,b)=>a.d-b.d);RES=list;
 }
 const fmtDate=()=>new Date(dYear,dMonth,dDay).toLocaleDateString(LANG==='en'?'en-GB':'fr-FR',{weekday:'short',day:'numeric',month:'short'});
+const CAP=60,cntTxt=n=>n>CAP?CAP+'+':n;
 const kmTxt=d=>d<1000?d+' m':(d/1000).toString().replace('.',',')+' km';
 function placeInd(){const b=$('seg').querySelector('[aria-pressed="true"]'),ind=$('ind');if(!b||!b.offsetWidth)return;
   ind.style.width=b.offsetWidth+'px';ind.style.transform='translateX('+b.offsetLeft+'px)';}
@@ -459,18 +504,18 @@ function updateChrome(){
   $('dlabel').textContent=fmtDate();$('date').value=dYear+'-'+String(dMonth+1).padStart(2,'0')+'-'+String(dDay).padStart(2,'0');
   $('sunspan').textContent=sunrise==null?'Pas de soleil ce jour-là':'Lever '+hm(sunrise)+' · coucher '+hm(sunset);
   $('wname').textContent=PLACES[from][0];$('rad').textContent=kmTxt(dist);
-  $('cnt').textContent=G?RES.length:'–';
+  $('cnt').textContent=G?cntTxt(RES.length):'–';
   $('fSun').setAttribute('aria-pressed',fSun);$('fShade').setAttribute('aria-pressed',showShade);
   $('seg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===cat));placeInd();
 }
 let lastCards=0;
 function render(force,shadow){
   updateChrome();
-  if(!G){drawDial();return;}
+  if(!G){renderCards();drawDial();return;}
   filter();if(sel&&!RES.some(r=>r.p===sel))sel=null;
   const t=performance.now();
   if(!scrubbing||force||t-lastCards>90){renderCards();lastCards=t;}
-  $('cnt').textContent=RES.filter(r=>!fSun||r.st===2).length;
+  $('cnt').textContent=cntTxt(RES.filter(r=>!fSun||r.st===2).length);
   drawDial();
   if(shadow){requestShadow(scrubbing);if(!scrubbing)drawMap();}else drawMap();
 }
@@ -595,9 +640,9 @@ PLACES.forEach((pl,i)=>{const o=document.createElement('option');o.value=i;o.tex
 $('from').value=from;
 function refit(){setTimeout(()=>{try{layout();if(sel&&route&&!scrubbing)fitRoute(300);}catch(e){}},750);}
 function selFirst(){try{render(true,true);if(RES.length){select(RES[0].p,{scroll:false});refit();if(CARDS.get(RES[0].p.i))centerCard(RES[0].p,false);}else goOverview(500);}catch(e){goOverview(500);}}
-$("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(()=>{selFirst();}).catch(()=>{});};
+$("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(()=>{selFirst();}).catch(()=>{schedule(false);toast(RELIEF_ERR+'. Vérifie ta connexion.');});};
 $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
-$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;top5Mode=false;cat=b.dataset.c;save();schedule(false);});
+$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.c===cat)return;cat=b.dataset.c;save();schedule(false);});
 $('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
 $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedule(false);};
 (()=>{const gb=$('grab');let y0=null,h0=0,mv=0,t0=0;
@@ -607,12 +652,23 @@ $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedu
     if(mv<=6){setH(curH&&curH<84?NAT:(curH>NAT+36?NAT:40),true);return;} // simple tap : replie / déplie
     if(curH<84+20&&curH<NAT/2)setH(40,true);else if(Math.abs(curH-NAT)<28)setH(NAT,true);};
   gb.addEventListener('pointerup',end);gb.addEventListener('pointercancel',end);})();
+$('recenter').onclick=()=>{if(sel&&route&&route.p===sel)fitRoute(500);else goOverview(500);};
 $('zin').onclick=()=>zoomBy(1.4);$('zout').onclick=()=>zoomBy(1/1.4);
 $('date').onchange=e=>{const v=e.target.value.split('-').map(Number);
   if(v.length===3&&v[0]){stopPlay();[dYear,dMonth,dDay]=[v[0],v[1]-1,v[2]];computeArc();if(G)computeDay();schedule(true);}};
 document.querySelector('.datebtn').addEventListener('click',()=>{try{$('date').showPicker();}catch(e){}});
-$('now').onclick=()=>{stopPlay();const n=new Date();[dYear,dMonth,dDay]=[n.getFullYear(),n.getMonth(),n.getDate()];
-  selMin=clamp(Math.round((n.getHours()*60+n.getMinutes())/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);};
+$('now').onclick=()=>{stopPlay();const n=parisNow();[dYear,dMonth,dDay]=[n.y,n.mo,n.d];
+  selMin=clamp(Math.round(n.min/5)*5,M0,M1);computeArc();if(G)computeDay();schedule(true);};
+// fenêtres modales : le focus y entre, y reste (Tab) et revient au bouton d'origine à la fermeture
+const MODAL={el:null,back:null};
+function modalOpen(el,first){MODAL.el=el;MODAL.back=document.activeElement;setTimeout(()=>{const f=first&&$(first);if(f)try{f.focus({preventScroll:true});}catch(e){}},60);}
+function modalClose(el){if(MODAL.el!==el)return;const b=MODAL.back;MODAL.el=null;MODAL.back=null;if(b&&b.focus&&document.contains(b))try{b.focus({preventScroll:true});}catch(e){}}
+addEventListener('keydown',e=>{if(e.key!=='Tab'||!MODAL.el||MODAL.el.hidden)return;
+  const f=[...MODAL.el.querySelectorAll('button,a[href],input,select,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled&&x.offsetParent!==null&&!x.classList.contains('off'));
+  if(!f.length)return;const a=f[0],z=f[f.length-1];
+  if(!MODAL.el.contains(document.activeElement)){e.preventDefault();a.focus();}
+  else if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}
+  else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}});
 let hidAt=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hidAt=Date.now();return;}if(typeof DEF_MIN!=='number'&&hidAt&&Date.now()-hidAt>120000&&!scrubbing){try{$('now').onclick();}catch(e){}}hidAt=0;});
 
 // ---- thème
@@ -626,11 +682,15 @@ new ResizeObserver(()=>{layout();if(G)drawMap();}).observe($('panel'));
 // ---- démarrage
 $('play').innerHTML=ICON_PLAY;
 layout();updateChrome();drawDial();renderCards();
-setTimeout(async()=>{try{
-  await needArea();G={ready:true};
-  layout();const [fx,fy]=PLACES[from].slice(1);scale=fitScale();[cxw,cyw]=focus(fx,fy,scale);
-  filter();render(true,false);readyRes();locate(true);
-}catch(e){$('tray').innerHTML='<div class="empty"><b>Le relief n’a pas pu être chargé</b><span></span></div>';$('tray').querySelector('span').textContent=e.message;readyRes();}},250);
+async function boot0(){BOOTERR=false;trayMode='';
+  try{
+    renderCards();
+    await Promise.race([needArea(),new Promise((_,rj)=>setTimeout(()=>rj(new Error('délai dépassé')),25000))]);
+    if(!G){G={ready:true};layout();const [fx,fy]=PLACES[from].slice(1);scale=fitScale();[cxw,cyw]=focus(fx,fy,scale);filter();render(true,false);readyRes();locate(true);}
+    else{filter();render(true,true);}
+  }catch(e){console.warn(e);BOOTERR=true;trayMode='';if(!G)readyRes();render(true,false);}}
+const boot=()=>BOOTP||(BOOTP=boot0().finally(()=>{BOOTP=null;}));
+setTimeout(boot,250);
 
 // ---- Autour de moi (géolocalisation)
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),4200);}
@@ -638,14 +698,14 @@ let MYIDX=-1;
 let locP=null,locWarned=false;
 function locate(auto){return locP=new Promise(done=>locateRun(auto,done));}
 async function locateRun(auto,done){
-  if(auto&&typeof DEF_MIN==='number'){done(false);return;} // défaut provisoire : pas de géoloc automatique
+  if(auto&&DEF_LOCK){done(false);return;} // lieu par défaut verrouillé : pas de géoloc automatique
   if(!navigator.geolocation){if(!auto)toast('La localisation n’est pas disponible sur cet appareil.');done(false);return;}
   const btn=$('loc');btn.classList.add('busy');await READY;
   navigator.geolocation.getCurrentPosition(async pos=>{
     btn.classList.remove('busy');
     const x=(pos.coords.longitude-LON)*KX,y=(pos.coords.latitude-LAT)*KY;
     const inside=tilesFor(x,y,250).length>0;
-    if(!inside){if(!auto||!locWarned){locWarned=true;toast('Vous êtes hors de la zone couverte (commune d’Antibes) : on part de la place Nationale.');}done(false);return;}
+    if(!inside){if(!auto||!locWarned){locWarned=true;toast('Vous êtes hors de la zone couverte (commune d’Antibes). Point de départ : '+PLACES[from][0]+'.');}done(false);return;}
     if(MYIDX<0){MYIDX=PLACES.length;PLACES.push(['Ma position',x,y]);
       for(const id of ['from','from2']){const o=document.createElement('option');o.value=MYIDX;o.textContent='Ma position';$(id).appendChild(o);}}
     else PLACES[MYIDX]=['Ma position',x,y];
@@ -670,15 +730,16 @@ function paintWalk(){const r=$('walkRange');r.value=walkMin;r.style.setProperty(
   $('sunner').style.left='calc(17px + (100% - 34px) * '+((sunNeed-15)/105)+')';}
   $('walker').style.left='calc(17px + (100% - 34px) * '+((walkMin-3)/17)+')';}
 function openWalk(){$('walkWhat').textContent=cat==='boire'?'Pour boire un verre':'Pour manger dehors';paintWalk();
-  const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));}
-function closeWalk(){const w=$('walk');w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
+  const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));modalOpen(w,'walkX');}
+function closeWalk(){const w=$('walk');modalClose(w);w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
 let walkT=0,sunT=0;$('walkRange').addEventListener('input',e=>{const v=+e.target.value,wk=$('walker');wk.classList.toggle('back',v<walkMin);walkMin=v;paintWalk();
   wk.classList.add('go');clearTimeout(walkT);walkT=setTimeout(()=>wk.classList.remove('go'),420);});
 if($('sunRange'))$('sunRange').addEventListener('input',e=>{sunNeed=+e.target.value;paintWalk();const sn=$('sunner');sn.classList.add('go');clearTimeout(sunT);sunT=setTimeout(()=>sn.classList.remove('go'),500);});
-function resetNow(){const n=new Date(),key=''+dYear+dMonth+dDay;let night=false;
-  dYear=n.getFullYear();dMonth=n.getMonth();dDay=n.getDate();selMin=Math.round((n.getHours()*60+n.getMinutes())/5)*5;
-  if(!sunAt(selMin)){night=true;if(selMin>720){const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}selMin=750;}
-  if(typeof DEF_MIN==='number'){selMin=DEF_MIN;night=false;}
+// renvoie '' (jour), 'soir' (soleil couché : demain 12 h 30) ou 'matin' (pas encore levé : aujourd'hui 12 h 30)
+function resetNow(){const n=parisNow(),key=''+dYear+dMonth+dDay;let night='';
+  dYear=n.y;dMonth=n.mo;dDay=n.d;selMin=Math.round(n.min/5)*5;
+  if(!sunAt(selMin)){if(selMin>720){night='soir';const t=new Date(dYear,dMonth,dDay+1);dYear=t.getFullYear();dMonth=t.getMonth();dDay=t.getDate();}else night='matin';selMin=750;}
+  if(typeof DEF_MIN==='number'){selMin=DEF_MIN;night='';}
   selMin=clamp(selMin,M0,M1);computeArc();if(G&&(key!==''+dYear+dMonth+dDay||!SVS))computeDay();return night;}
 
 const THQ=new Set();
@@ -688,13 +749,15 @@ function thumbsFor(){if(!GKEY||!RES.length)return;const ps=RES.slice(0,30).map(r
 function openTop5Map(keep){
   stopPlay();top5Mode=true;dist=walkMin*WALK;save();go(null);layout();sel=null;route=null;filter();render(true,true);
   if(RES.length){try{select(RES[0].p,{scroll:false});refit();}catch(e){goOverview(keep?400:0);}}else goOverview(keep?400:0);
-  if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
+  if(!G||areaLost())toast(RELIEF_ERR+'. Vérifie ta connexion.');
+  else if(!RES.length)toast('Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.');
   thumbsFor();}
-$('walkGo').onclick=async()=>{save();closeWalk();await READY;let night=false;
+$('walkGo').onclick=async()=>{save();closeWalk();await READY;if(!G)await boot(); // échec au démarrage : on retente avant d'ouvrir la carte
+  let night='';
   try{night=resetNow();}catch(e){console.warn(e);}
   try{if(MYIDX<0&&locP)await Promise.race([locP,new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   try{await Promise.race([needArea(),new Promise(r=>setTimeout(r,12000))]);}catch(e){console.warn(e);}
-  openTop5Map();if(night)toast('Le soleil est couché : on te montre demain à 12 h 30.');};
+  openTop5Map();if(night==='soir')toast('Le soleil est couché : on te montre demain à 12 h 30.');else if(night==='matin')toast('Le soleil n’est pas encore levé : on te montre aujourd’hui à 12 h 30.');};
 $('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
 $('walkChip').onclick=openWalk;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('walk').hidden)closeWalk();});
@@ -704,25 +767,19 @@ var PHOTOS={};
 const visOf=p=>'visuels/v'+((BOIRE.has(p.k)?0:8)+(p.i*5+p.n.length)%8)+'.jpg';
 
 // ---- galerie photos du lieu (Google Maps)
-const GPL={};let galP=null,GPERR='';
+let galP=null,GPERR='';
 const gpNear=(pl,p)=>pl.location&&Math.hypot((pl.location.longitude-(LON+p.x/KX))*KX,(pl.location.latitude-(LAT+p.y/KY))*KY)<45;
-async function gpPhotos(p){if(GPL[p.i])return GPL[p.i];if(!GKEY)return GPL[p.i]=[];
-  try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
-      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos,places.location'},
-      body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
-    if(!r.ok){let m='';try{m=((await r.json()).error||{}).message||'';}catch(_){}diag('gp','GP '+r.status);GPERR='Google Places : erreur '+r.status+(m?' – '+m.slice(0,90):'');return[];}
-    const j=await r.json(),pl=(j.places||[])[0];
-    if(!pl){diag('gp','GP aucun lieu');GPERR='Aucun lieu trouvé sur Google Maps';return GPL[p.i]=[];}
-    if(!(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p))){diag('gp','GP nom ≠ '+((pl.displayName&&pl.displayName.text)||'?').slice(0,18));return GPL[p.i]=[];}
-    diag('gp','GP '+((pl.photos||[]).length)+' photos');
-    return GPL[p.i]=(pl.photos||[]).slice(0,10).map(ph=>({u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=900&key='+GKEY,a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''}));
-  }catch(e){diag('gp','GP réseau');GPERR='Connexion à Google impossible ('+(e&&e.message||e)+')';return[];}}
+// photos de la galerie : la liste (jusqu'à 10) est mémorisée avec le lieu, donc un seul appel Places par lieu
+async function gpPhotos(p){if(!GKEY)return [];
+  if(!gpOk(p))await gpFetch(p);else if(GP[p.i]&&GP[p.i].u&&!GP[p.i].l)await gpFetch(p,true); // ancienne entrée sans liste
+  const g=GP[p.i];if(g&&g.l)return g.l.map(x=>({u:gpMedia(x.n,900),a:x.a}));
+  if(gpOff&&!GPERR)GPERR=GP_MSG;return [];}
 async function openGal(p){try{return await openGal0(p);}catch(e){toast('Galerie : '+(e&&e.message||e));}}
-async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;sl.replaceChildren();sl.scrollLeft=0;
+async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;modalOpen(g,'galx');sl.replaceChildren();sl.scrollLeft=0;
   {const gn=$('galn'),w=p.n.split(' ');gn.textContent='';if(w.length<2)gn.textContent=p.n;else{let bi=1,bd=1e9;for(let i=1;i<w.length;i++){const d=Math.abs(w.slice(0,i).join(' ').length-w.slice(i).join(' ').length);if(d<bd){bd=d;bi=i;}}gn.append(w.slice(0,bi).join(' '),document.createElement('br'),w.slice(bi).join(' '));}}const st=stateAt(p,selMin),[,txt]=pill(p,st);
   let wm=0;try{const [,fx,fy]=PLACES[from];wm=Math.max(1,Math.round(Math.hypot(p.sx-fx,p.sy-fy)*1.25/WALK));}catch(e){}
   $('galk').textContent=(KIND[p.k]||p.k)+(wm?' · '+wm+' min à pied':'');
-  {const m=/^(.*?)(\d{1,2}(?:\s?h\s?|:)\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent='';if(m){const hh=/(\d{1,2})(?:\s?h\s?|:)(\d{2})/.exec(m[2]);uv.append(hh[1]+' h',document.createElement('br'),hh[2]);}else uv.textContent=txt;uv.classList.toggle('sm',!m);
+  {const m=/^(.*?)(\d{1,2}(?:\s?h\s?|:)\d{2})$/.exec(txt),uv=$('galuv');$('galul').textContent=m?m[1].trim().replace(/[’']$/,'’').replace(/jusqu’à$/,'Soleil jusqu’à').replace(/^Soleil Soleil/,'Soleil'):'';uv.textContent='';if(m){const hh=/(\d{1,2})(?:\s?h\s?|:)(\d{2})/.exec(m[2]);if(LANG==='en')uv.textContent=hh[1]+':'+hh[2];else uv.append(hh[1]+' h',document.createElement('br'),hh[2]);}else uv.textContent=txt;uv.classList.toggle('sm',!m);
    if(m&&!/^Soleil/.test($('galul').textContent))$('galul').textContent=m[1].trim();
    const bar=$('galbar');bar.replaceChildren();try{if(!p.day)dayFor(p);let k=0;while(k<NM){if(p.day[k]===2){let j=k;while(j<NM&&p.day[j]===2)j++;const e=document.createElement('i');e.style.left=(k/NM*100)+'%';e.style.width=((j-k)/NM*100)+'%';bar.appendChild(e);k=j;}else k++;}
    const u=document.createElement('u');u.style.left=(Math.max(0,Math.min(1,(selMin-M0)/(M1-M0)))*100)+'%';bar.appendChild(u);}catch(e){}}
@@ -738,19 +795,22 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
     $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';{const d=$('galdots');if(d.children.length!==fs.length){d.replaceChildren();fs.forEach(()=>d.appendChild(document.createElement('i')));}[...d.children].forEach((e,n)=>e.classList.toggle('on',n===i));}$('galprev').classList.toggle('off',fs.length<2||i<=0);$('galnext').classList.toggle('off',fs.length<2||i>=fs.length-1);$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
   sl.onscroll=upd;draw();$('galprev').onclick=()=>sl.scrollBy({left:-sl.clientWidth,behavior:'smooth'});$('galnext').onclick=()=>sl.scrollBy({left:sl.clientWidth,behavior:'smooth'});
   if(GKEY&&!svOk(p))svFetch(p).then(()=>{if(galP===p&&svOk(p)&&SV[p.i].u){add([]);slides.unshift({u:SV[p.i].u,a:'',sv:1});draw();}});
-  GPERR='';const more=await gpPhotos(p);if(galP!==p)return;if(more.length){add(more);draw();}else{const g=[...sl.children].some(f=>/googleapis/.test(f.querySelector('img')&&f.querySelector('img').src||''));if(!g)$('galcr').textContent=GPERR||(GKEY?'Pas de photo Google pour ce lieu':'Clé Google absente');}}
-function closeGal(){$('gal').hidden=true;galP=null;}
+  GPERR='';const more=await gpPhotos(p);if(galP!==p)return;if(more.length){add(more);draw();}else{const g=[...sl.children].some(f=>/googleapis/.test(f.querySelector('img')&&f.querySelector('img').src||''));if(!g)$('galcr').textContent=GPERR||'Pas de photo Google pour ce lieu';}}
+function closeGal(){modalClose($('gal'));$('gal').hidden=true;galP=null;}
 $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v75',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
-const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpBusy=new Set(),GP_TTL=7*864e5;
-try{GP=JSON.parse(localStorage.getItem('gp-v2')||'{}');}catch(e){}
+const APPV='v76',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
+// plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
+const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
+const gpMedia=(n,w)=>'https://places.googleapis.com/v1/'+n+'/media?maxWidthPx='+w+'&key='+GKEY;
+GP=lsj('gp-v2');
 const gpOk=p=>{const g=GP[p.i];return g&&Date.now()-g.t<(g.u?GP_TTL:864e5);};
-let SV={},svOff=!GKEY;const svBusy=new Set(),SV_TTL=30*864e5;try{SV=JSON.parse(localStorage.getItem('sv-v2')||'{}');}catch(e){}
+let SV=lsj('sv-v2'),svOff=!GKEY;const svBusy=new Set(),SV_TTL=30*864e5;
 const svOk=p=>SV[p.i]&&Date.now()-SV[p.i].t<(SV[p.i].u?SV_TTL:864e5);
-async function svFetch(p){if(svOff||svOk(p)||svBusy.has(p.i))return false;svBusy.add(p.i);
+async function svFetch(p){if(svOff||svOk(p)||svBusy.has(p.i)||!callOk())return false;svBusy.add(p.i);
   const lat=LAT+p.y/KY,lon=LON+p.x/KX,base='https://maps.googleapis.com/maps/api/streetview',key='&key='+GKEY;
   try{let u=null;
     try{const r=await fetch(base+'/metadata?location='+lat+','+lon+'&radius=60&source=outdoor'+key);
@@ -765,31 +825,29 @@ async function svFetch(p){if(svOff||svOk(p)||svBusy.has(p.i))return false;svBusy
     try{localStorage.setItem('sv-v2',JSON.stringify(SV));}catch(e){}
     return !!u;
   }finally{svBusy.delete(p.i);}}
-async function mediaEnsure(ps){if(!GKEY)return false;const a=await gpEnsure(ps);const left=ps.filter(p=>!(GP[p.i]&&GP[p.i].u));const b=await Promise.all(left.map(svFetch));return a||b.some(Boolean);}
+async function mediaEnsure(ps){if(!GKEY)return false;const a=await gpEnsure(ps);const left=ps.filter(p=>!(GP[p.i]&&GP[p.i].u));const b=await Promise.all(left.map(p=>svFetch(p)));return a||b.some(Boolean);}
 const photoOf=p=>(GP[p.i]&&GP[p.i].u&&Date.now()-GP[p.i].t<GP_TTL?GP[p.i].u:null)||(svOk(p)&&SV[p.i].u)||PHOTOS[p.i]||visOf(p);
 const gpNorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ');
 function gpSame(a,b){a=gpNorm(a).trim();b=gpNorm(b).trim();if(!a||!b)return false;if(a.includes(b)||b.includes(a))return true;
   const ta=a.split(/ +/).filter(t=>t.length>3),tb=b.split(/ +/).filter(t=>t.length>3);return ta.some(t=>tb.includes(t));}
-async function gpFetch(p){if(gpOff||gpOk(p)||gpBusy.has(p.i))return false;gpBusy.add(p.i);
+function gpFetch(p,force){if(gpOff||(!force&&gpOk(p)))return Promise.resolve(false);if(gpP.has(p.i))return gpP.get(p.i);
+  const pr=gpFetch0(p).finally(()=>gpP.delete(p.i));gpP.set(p.i,pr);return pr;}
+async function gpFetch0(p){
+  if(!callOk()){GPERR=GP_MSG;diag('gp','GP plafond');return false;}
+  const au=x=>(x.authorAttributions&&x.authorAttributions[0]&&x.authorAttributions[0].displayName)||'';
   try{const r=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',
       headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.photos,places.location'},
       body:JSON.stringify({textQuery:p.n+' Antibes',maxResultCount:1,languageCode:'fr',locationBias:{circle:{center:{latitude:LAT+p.y/KY,longitude:LON+p.x/KX},radius:70}}})});
-    if(!r.ok){if(r.status===400||r.status===401||r.status===403)gpOff=true;diag('gp','GP '+r.status);return false;}
-    const j=await r.json(),pl=(j.places||[])[0],ph=pl&&pl.photos&&pl.photos[0];
-    if(ph&&(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p)))GP[p.i]={t:Date.now(),u:'https://places.googleapis.com/v1/'+ph.name+'/media?maxWidthPx=800&key='+GKEY,
-        a:(ph.authorAttributions&&ph.authorAttributions[0]&&ph.authorAttributions[0].displayName)||''};
-    else GP[p.i]={t:Date.now()};
+    if(!r.ok){if(r.status===400||r.status===401||r.status===403)gpOff=true;diag('gp','GP '+r.status);console.warn('Google Places : erreur '+r.status);GPERR=GP_MSG;return false;}
+    const j=await r.json(),pl=(j.places||[])[0],ok=pl&&(gpSame(pl.displayName&&pl.displayName.text,p.n)||gpNear(pl,p)),phs=ok?(pl.photos||[]).slice(0,10):[];
+    GPERR=pl?'':'Aucun lieu trouvé sur Google Maps';
+    GP[p.i]=phs.length?{t:Date.now(),u:gpMedia(phs[0].name,800),a:au(phs[0]),l:phs.map(x=>({n:x.name,a:au(x)}))}:{t:Date.now()};
     try{localStorage.setItem('gp-v2',JSON.stringify(GP));}catch(e){}
-    if(GP[p.i].u)diag('gp','GP ok');
-    return !!GP[p.i].u;
-  }catch(e){diag('gp','GP réseau');return false;}finally{gpBusy.delete(p.i);}}
-async function gpEnsure(ps){const rs=await Promise.all(ps.map(gpFetch));return rs.some(Boolean);}
-setTimeout(()=>{try{if(!GKEY){diag('gp','clé Google absente');return;}const q=(PD&&P&&P[0])||null;if(q){delete GP[q.i];delete SV[q.i];gpFetch(q);svFetch(q);}else diag('gp','aucun lieu');}catch(e){diag('gp','err '+(e&&e.message));}},3500);
-fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
-  PHOTOS=j||{};if(!Object.keys(PHOTOS).length)return;
-  CARDS.clear();trayMode='';
-  if($('top5').classList.contains('on')&&G)renderTop5();else if(G)schedule(false);
-}).catch(()=>{});
+    if(phs.length)diag('gp','GP ok');
+    return phs.length>0;
+  }catch(e){diag('gp','GP réseau');console.warn(e);GPERR=GP_MSG;return false;}}
+async function gpEnsure(ps){const rs=await Promise.all(ps.map(p=>gpFetch(p)));return rs.some(Boolean);}
+// (photos.json : fichier optionnel non fourni, plus de requête au démarrage ; PHOTOS reste vide)
 
 // ---- langue : FR / EN (traduction du DOM ; les noms de lieux restent tels quels)
 document.documentElement.lang=LANG;
@@ -800,14 +858,14 @@ if(LANG==='en'){(()=>{
    'Localisateur de terrasses ensoleillées autour de toi':'Find sunny terraces around you','Un coin de':'A touch of','soleil':'sunshine','pour…':'to…','C’est parti':'Let’s go','un verre':'a drink','Bars, cafés, pubs':'Bars, cafés, pubs','Miam':'Yum','dehors':'outside','Restaurants, glaciers, snacks':'Restaurants, ice cream, snacks',
    'Voir sur la carte':'View on map','Jusqu’où veux-tu marcher ?':'How far do you want to walk?','min à pied':'min walk','Combien de min de soleil restantes au minimum ?':'At least how many minutes of sun left?','min de soleil':'min of sun','Voir les terrasses ensoleillées':'See sunny terraces',
    'Retour':'Back','Y aller':'Directions','Y aller ↗':'Directions ↗','Plan et ombres':'Map & shadows','Photo aérienne':'Aerial photo','Fermer':'Close',
-   'Carte des ombres':'Shadow map','Retour aux meilleurs spots':'Back to top spots','Point de départ':'Starting point','Seulement les terrasses au soleil':'Only sunny terraces','Zoom avant':'Zoom in','Zoom arrière':'Zoom out','Afficher la liste':'Show list','Boire ou manger':'Drink or eat','Afficher aussi les terrasses à l’ombre':'Also show shaded terraces','Changer le rayon':'Change radius','Lire la journée':'Play the day','Heure':'Time','Changer : boire ou manger':'Switch: drink or eat','Autour de moi':'Around me','Minutes de marche maximum':'Maximum walking minutes','Minutes de soleil restantes minimum':'Minimum minutes of sun left','Photos du lieu':'Place photos','Photo précédente':'Previous photo','Photo suivante':'Next photo','Vue agrandie':'Enlarged view',
+   'Carte des ombres':'Shadow map','Retour aux meilleurs spots':'Back to top spots','Point de départ':'Starting point','Seulement les terrasses au soleil':'Only sunny terraces','Zoom avant':'Zoom in','Zoom arrière':'Zoom out','Afficher la liste':'Show list','Boire ou manger':'Drink or eat','Afficher aussi les terrasses à l’ombre':'Also show shaded terraces','Changer le rayon':'Change radius','Lire la journée':'Play the day','Heure':'Time','Changer : boire ou manger':'Switch: drink or eat','Autour de moi':'Around me','Minutes de marche maximum':'Maximum walking minutes','Minutes de soleil restantes minimum':'Minimum minutes of sun left','Photos du lieu':'Place photos','Tourne ton téléphone':'Rotate your phone','Solio se lit à la verticale.':'Solio is designed to be used upright.','Photo précédente':'Previous photo','Photo suivante':'Next photo','Vue agrandie':'Enlarged view',
    'Soleil jusqu’à':'Sun until','Ombre · soleil à':'Shade · sun at','Nuit':'Night','Ma position':'My location',
    'Aucune terrasse au soleil à cette heure':'No sunny terrace at this time','Aucune terrasse dans ce rayon':'No terrace in this radius','. Déplacez le curseur de l’heure pour voir passer le soleil.':'. Move the time slider to follow the sun.','Élargir le rayon':'Widen radius','Pas de soleil ce jour-là':'No sun that day','Aucune terrasse ensoleillée':'No sunny terrace','Élargis la distance ou réduis les minutes de soleil.':'Widen the distance or reduce the minutes of sun.','Le relief n’a pas pu être chargé':'The terrain could not be loaded',
-   'La localisation n’est pas disponible sur cet appareil.':'Location is not available on this device.','Vous êtes hors de la zone couverte (commune d’Antibes) : on part de la place Nationale.':'You are outside the covered area (Antibes): starting from Place Nationale.','Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Location denied. Allow it in Settings > Privacy > Location Services.','Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.':'Position not found right now. Try again outside or pick a point in the list.',
-   'Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.':'No sunny terrace in this radius: widen the distance or reduce the minutes of sun.','Le soleil est couché : on te montre demain à 12 h 30.':'The sun has set: showing you tomorrow at 12:30.',
+   'La localisation n’est pas disponible sur cet appareil.':'Location is not available on this device.','Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Location denied. Allow it in Settings > Privacy > Location Services.','Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.':'Position not found right now. Try again outside or pick a point in the list.',
+   'Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.':'No sunny terrace in this radius: widen the distance or reduce the minutes of sun.','Le soleil est couché : on te montre demain à 12 h 30.':'The sun has set: showing you tomorrow at 12:30.','Le soleil n’est pas encore levé : on te montre aujourd’hui à 12 h 30.':'The sun has not risen yet: showing you today at 12:30.',
    'Bois un verre en terrasse':'Have a drink on a terrace','Mange en terrasse':'Eat on a terrace','au soleil':'in the sun','ici :':'here:',
-   'Pour boire un verre':'To grab a drink','Pour manger dehors':'To eat outside','Aucun lieu trouvé sur Google Maps':'No place found on Google Maps','Pas de photo Google pour ce lieu':'No Google photo for this place','Clé Google absente':'Google key missing'};
-  const FR=[[/Soleil jusqu’au soir/g,'Sun until evening'],[/Soleil jusqu’à/g,'Sun until'],[/Ombre jusqu’au coucher/g,'Shade until sunset'],[/Ombre · soleil à/g,'Shade · sun at'],[/ombres à/g,'shade at'],[/ min à pied/g,' min walk'],[/· terrasse \?/g,'· terrace ?'],[/· terrasse/g,'· terrace'],
+   'Pour boire un verre':'To grab a drink','Pour manger dehors':'To eat outside','Aucun lieu trouvé sur Google Maps':'No place found on Google Maps','Pas de photo Google pour ce lieu':'No Google photo for this place','Photos Google indisponibles pour le moment':'Google photos unavailable right now','Vérifie ta connexion, puis réessaie.':'Check your connection, then try again.','Réessayer':'Retry','Recentrer la carte':'Recenter the map'};
+  const FR=[[/Vous êtes hors de la zone couverte \(commune d’Antibes\)\. Point de départ : /,'You are outside the covered area (Antibes). Starting point: '],[/Soleil jusqu’au soir/g,'Sun until evening'],[/Soleil jusqu’à/g,'Sun until'],[/Ombre jusqu’au coucher/g,'Shade until sunset'],[/Ombre · soleil à/g,'Shade · sun at'],[/ombres à/g,'shade at'],[/ min à pied/g,' min walk'],[/· terrasse \?/g,'· terrace ?'],[/· terrasse/g,'· terrace'],
     [/^Glacier(?= ·|$)/,'Ice cream'],[/Restauration rapide/g,'Fast food'],[/Lever (\d+) h (\d\d) · coucher/g,'Sunrise $1:$2 · sunset'],[/^(\d+) h$/,'$1:00'],[/(\d+) h (\d\d)/g,'$1:$2'],[/(\d),(\d) km/g,'$1.$2 km'],[/^Agrandir la vue aérienne de /,'Enlarge aerial view of '],[/contributeur/g,'contributor']];
   const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
     if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.tile')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}

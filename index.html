@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://places.googleapis.com https://maps.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Solio</title>
 <meta name="description" content="Solio : localisateur de terrasses ensoleillées autour de toi.">
@@ -13,8 +14,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=2">
 <link rel="icon" type="image/png" href="icons/icon-192.png?v=2">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@300;500&family=Outfit:wght@200;300&display=swap">
-<link rel="stylesheet" href="style.css?v=75">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@300;500&family=Outfit:wght@200;300&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@300;500&family=Outfit:wght@200;300&display=swap"></noscript>
+<link rel="stylesheet" href="style.css?v=76">
 </head>
 <body>
 <div id="app">
@@ -34,6 +37,7 @@
     </button>
   </header>
 
+  <button class="roundbtn glass recenter" id="recenter" hidden aria-label="Recentrer la carte"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.500"/><circle cx="12" cy="12" r="8"/><path d="M12 1.500v3M12 19.500v3M1.500 12h3M19.500 12h3.500"/></svg></button>
   <div class="zoom glass" id="zoom"><button id="zin" aria-label="Zoom avant">+</button><button id="zout" aria-label="Zoom arrière">−</button></div>
   <section class="panel glass" id="panel">
     <button class="grab" id="grab" aria-expanded="false" aria-label="Afficher la liste"></button>
@@ -160,8 +164,9 @@
   </div>
 </div>
 
-<div class="ver" aria-hidden="true">v75</div>
+<div class="ver" aria-hidden="true">v76</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="rot" id="rot" role="alert"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="5" width="18" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M24 38h0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><b>Tourne ton téléphone</b><span>Solio se lit à la verticale.</span></div>
 <div class="gal" id="gal" hidden role="dialog" aria-modal="true" aria-label="Photos du lieu">
   <div class="galwrap"><div class="galsl" id="galsl"></div></div>
   <div class="galshade t"></div><div class="galshade b"></div>
@@ -184,14 +189,14 @@
   <div class="row"><button id="lbPlan" aria-pressed="true">Plan et ombres</button><button id="lbPhoto" aria-pressed="false">Photo aérienne</button><button id="lbx">Fermer</button></div>
 </div>
 <script>
-window.ZLOAD=(async()=>{const g=u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u);return r.json();});
+window.ZLOAD=(async()=>{const g=u=>{const ac=window.AbortController?new AbortController():null,to=setTimeout(()=>{if(ac)ac.abort();},20000);return fetch(u,ac?{signal:ac.signal}:undefined).then(r=>{if(!r.ok)throw new Error(u);return r.json();}).finally(()=>clearTimeout(to));};
   const [idx,roads,pl]=await Promise.all([g('zone/index.json'),g('zone/roads.json'),g('zone/places.json')]);
   window.ZIDX=idx;window.PLAN={r:roads.r,n:roads.n};window.PD=pl;})();
 </script>
-<script src="config.js?v=75"></script>
+<script src="config.js?v=76"></script>
 <script>
-ZLOAD.then(()=>{const s=document.createElement('script');s.src='app.js?v=75';document.body.appendChild(s);},
-  ()=>{const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;z-index:99;display:grid;place-content:center;padding:24px;text-align:center;font:16px system-ui;background:#fff8ec;color:#2b2217';d.innerHTML='<b>Impossible de charger les données.</b><br>Vérifie ta connexion puis recharge la page.';document.body.appendChild(d);});
+ZLOAD.then(()=>{const s=document.createElement('script');s.src='app.js?v=76';document.body.appendChild(s);},
+  ()=>{const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;z-index:99;display:grid;place-content:center;padding:24px;text-align:center;font:16px system-ui;background:#fff8ec;color:#2b2217';d.innerHTML='<b>Impossible de charger les données.</b><br>Vérifie ta connexion, puis réessaie.<br><button style="margin-top:18px;padding:12px 22px;border:0;border-radius:999px;background:#ffb000;color:#2a1700;font:600 16px system-ui" onclick="location.reload()">Réessayer</button>';document.body.appendChild(d);});
 </script>
 <script>if("serviceWorker"in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!window.__rl){window.__rl=1;location.reload();}});addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
 </body>
