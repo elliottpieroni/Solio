@@ -132,7 +132,7 @@ function prepPlaces(){let n=0;
 
 // ---- état
 const M0=420,M1=1380,STEP=10,NM=(M1-M0)/STEP;
-const RADII=[200,400,700,1000,1500],WALK=80; // 80 m par minute de marche
+const RADII=[200,400,700,1000,1500],WALK=80,WALK_MIN=3,WALK_MAX=30; // 80 m par minute de marche
 // « maintenant » = l'heure d'Antibes (Europe/Paris), pas celle de l'appareil
 const PTZ=(()=>{try{return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',hourCycle:'h23'});}catch(e){return null;}})();
 function parisNow(){if(PTZ)try{const o={};for(const q of PTZ.formatToParts(new Date()))o[q.type]=+q.value;if(o.year&&o.month&&o.day)return{y:o.year,mo:o.month-1,d:o.day,min:(o.hour%24)*60+o.minute};}catch(e){}
@@ -142,7 +142,7 @@ let dYear=now.y,dMonth=now.mo,dDay=now.d;
 let selMin=Math.min(1380,Math.max(420,Math.round(now.min/5)*5));
 let showShade=false,cat='all',fSun=true,fTer=false,walkMin=10,sunNeed=30,dist=400,from=0,sel=null,scrubbing=false,listOpen=false;
 try{const s=lsj('terr-v2');
-  if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=20)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
+  if(s.dist>=100&&s.dist<=2000)dist=s.dist;if(s.walkMin>=3&&s.walkMin<=WALK_MAX)walkMin=s.walkMin;if(s.from!=null&&PLACES[s.from])from=s.from;
   if(['all','boire','manger'].includes(s.cat))cat=s.cat;if([15,30,45,60,75,90,105,120].includes(s.sunNeed))sunNeed=s.sunNeed;}catch(e){}
 // DEF_MIN : heure fixe pour les essais (null = heure réelle d'Antibes). DEF_PLACE : lieu de départ par défaut ;
 // DEF_LOCK=true : pas de géolocalisation automatique, on part toujours de DEF_PLACE (le bouton « Autour de moi » reste actif)
@@ -406,7 +406,7 @@ function renderCards(){
     e.querySelector('b').textContent=fSun?'Aucune terrasse au soleil à cette heure':'Aucune terrasse dans ce rayon';
     e.querySelector('span').textContent='Rayon de '+(dist<1000?dist+' m':(dist/1000).toString().replace('.',',')+' km')+' autour de '+fn+'. Déplacez le curseur de l’heure pour voir passer le soleil.';
     const row=e.querySelector('.erow');
-    if(top5Mode?walkMin<20:dist<RADII[RADII.length-1]){const b=document.createElement('button');b.className='chip';b.dataset.a='wide';b.textContent='Élargir le rayon';row.appendChild(b);}
+    if(top5Mode?walkMin<WALK_MAX:dist<RADII[RADII.length-1]){const b=document.createElement('button');b.className='chip';b.dataset.a='wide';b.textContent='Élargir le rayon';row.appendChild(b);}
     
     tray.replaceChildren(e);return;
   }
@@ -418,7 +418,7 @@ function renderCards(){
 }
 $('tray').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;
   if(b.dataset.a==='retry'){boot();return;}
-  if(b.dataset.a==='wide'){if(top5Mode){walkMin=Math.min(20,walkMin+5);dist=walkMin*WALK;}else dist=RADII.find(r=>r>dist)||dist;save();goOverview();schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});}
+  if(b.dataset.a==='wide'){if(top5Mode){walkMin=Math.min(WALK_MAX,walkMin+5);dist=walkMin*WALK;}else dist=RADII.find(r=>r>dist)||dist;save();goOverview();schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});}
   else{fSun=false;save();schedule(false);}});
 
 let prog=0,sT=0;
@@ -661,7 +661,7 @@ function refit(){setTimeout(()=>{try{layout();if(sel&&route&&!scrubbing)fitRoute
 function selFirst(){try{render(true,true);if(RES.length){select(RES[0].p,{scroll:false});refit();if(CARDS.get(RES[0].p.i))centerCard(RES[0].p,false);}else goOverview(500);}catch(e){goOverview(500);}}
 $("from").onchange=e=>{from=+e.target.value;$("from2").value=from;save();sel=null;goOverview(650);schedule(false);needArea().then(()=>{selFirst();}).catch(()=>{schedule(false);toast(RELIEF_ERR+'. Vérifie ta connexion.');});};
 $('rad').onclick=()=>{top5Mode=false;dist=RADII.find(r=>r>dist)||RADII[0];save();goOverview(550);schedule(false);needArea().then(c=>{if(c)schedule(true);}).catch(()=>{});};
-$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.c===cat)return;cat=b.dataset.c;save();schedule(false);});
+$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.c===cat)return;cat=b.dataset.c;save();sel=null;if(G)selFirst();else schedule(false);}); // changer de catégorie sélectionne aussitôt le premier lieu
 $('fSun').onclick=()=>{fSun=!fSun;showShade=!fSun;save();schedule(false);};
 $('fShade').onclick=()=>{showShade=!showShade;fSun=!showShade;trayMode='';schedule(false);};
 (()=>{const gb=$('grab');let y0=null,h0=0,mv=0,t0=0;
@@ -743,11 +743,11 @@ $('loc').addEventListener('click',()=>locate(false));
 
 // ---- fenêtre « distance à pied »
 function walkTxt(m){const d=m*WALK;return '≈ '+(d<1000?d+' m':(d/1000).toFixed(1).replace('.',',')+' km');}
-function paintWalk(){const r=$('walkRange');r.value=walkMin;r.style.setProperty('--p',((walkMin-3)/17*100)+'%');
+function paintWalk(){const r=$('walkRange');r.value=walkMin;r.style.setProperty('--p',((walkMin-WALK_MIN)/(WALK_MAX-WALK_MIN)*100)+'%');
   $('walkMin').textContent=walkMin;
   const sr=$('sunRange');if(sr){sr.value=sunNeed;sr.style.setProperty('--p',((sunNeed-15)/105*100)+'%');$('sunV').textContent=sunNeed;
   $('sunner').style.left='calc(17px + (100% - 34px) * '+((sunNeed-15)/105)+')';}
-  $('walker').style.left='calc(17px + (100% - 34px) * '+((walkMin-3)/17)+')';}
+  $('walker').style.left='calc(17px + (100% - 34px) * '+((walkMin-WALK_MIN)/(WALK_MAX-WALK_MIN))+')';}
 function openWalk(){$('walkWhat').textContent=cat==='boire'?'Pour boire un verre':'Pour manger dehors';paintWalk();
   const w=$('walk');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));modalOpen(w,'walkX');}
 function closeWalk(){const w=$('walk');modalClose(w);w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
@@ -805,10 +805,10 @@ async function openGal0(p){galP=p;const g=$('gal'),sl=$('galsl');g.hidden=false;
   $('galgo').href=nav(p);$('galsv').href=sv(p);$('galcount').textContent='';$('galcr').textContent='';
   const slides=[];
   const svu=(svOk(p)&&SV[p.i].u)||null;if(svu)slides.push({u:svu,a:'',sv:1});
-  const pk=u=>String(u).replace(/(\/media)\?.*$/,'$1'),add=l=>{for(const x of l)if(!slides.some(s=>pk(s.u)===pk(x.u)))slides.push(x);};
+  const pk=u=>{const m=/places\/[^/]+\/photos\/[^/?]+/.exec(String(u));return m?m[0]:String(u).replace(/(\/media)\?.*$/,'$1');},add=l=>{for(const x of l)if(!slides.some(s=>pk(s.u)===pk(x.u)))slides.push(x);};
   if(GP[p.i]&&GP[p.i].u)add([{u:GP[p.i].u,a:GP[p.i].a}]);
   const draw=()=>{const list=slides.length?slides.filter(s=>!s.sv).concat(slides.filter(s=>s.sv)):[{u:PHOTOS[p.i]||visOf(p),a:'',fb:1}];
-    sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.src=s.u;
+    sl.replaceChildren();list.forEach((s,i)=>{const f=document.createElement('figure');const im=new Image();im.alt=p.n;im.decoding='async';im.loading=i<2?'eager':'lazy';im.src=s.u;
       im.onerror=()=>{f.remove();upd();};f.appendChild(im);f.dataset.a=s.sv?'Street View · Google':s.fb?'':('Photo © '+(s.a||'contributeur')+' · Google');sl.appendChild(f);});upd();};
   const upd=()=>{const fs=[...sl.children],w=sl.clientWidth||1,i=Math.min(fs.length-1,Math.round(sl.scrollLeft/w));
     $('galcount').textContent=fs.length>1?(i+1)+' / '+fs.length:'';{const d=$('galdots');if(d.children.length!==fs.length){d.replaceChildren();fs.forEach(()=>d.appendChild(document.createElement('i')));}[...d.children].forEach((e,n)=>e.classList.toggle('on',n===i));}$('galprev').classList.toggle('off',fs.length<2||i<=0);$('galnext').classList.toggle('off',fs.length<2||i>=fs.length-1);$('galcr').textContent=(fs[i]&&fs[i].dataset.a)||'';};
@@ -820,7 +820,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v78',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v79',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
