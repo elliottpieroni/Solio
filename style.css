@@ -727,13 +727,13 @@ body:has(.scr.on)::after{display:none}
 .pick.pk2 .go svg{stroke:#FF5FA2}
 .pick:hover .go,.pick:focus-visible .go{transform:translateX(3px)}
 .pick .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.pick b{position:relative;z-index:2;display:block;white-space:nowrap;font:400 min(84px,21.5vw)/.92 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase;color:#1B1B2F}
+.pick b{position:relative;z-index:2;display:block;white-space:nowrap;font:400 var(--tsz,min(84px,21.5vw))/.92 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase;color:#1B1B2F}
 .pick .art{position:absolute;pointer-events:none;z-index:1;transform:perspective(500px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .18s ease-out}
-.pick.pk1 .art{right:-36px;top:calc(46px + env(safe-area-inset-top,0px));width:240px;height:240px}
-.pick.pk2 .art{right:-50px;bottom:-44px;width:240px;height:240px}
+.pick.pk1 .art{right:12px;top:calc(64px + env(safe-area-inset-top,0px));width:180px;height:225px}
+.pick.pk2 .art{right:-56px;bottom:-60px;width:280px;height:280px}
 .pick .art svg{width:100%;height:100%;overflow:visible}
-.pick.pk1 .art svg{animation:spin 60s linear infinite}
+.bubble{animation:rise 3.2s ease-in infinite;transform-box:fill-box}.bubble.b2{animation-delay:-.8s}.bubble.b3{animation-delay:-1.6s}.bubble.b4{animation-delay:-2.4s}
 .stickwrap{position:absolute;z-index:5;left:var(--gutter-l);right:var(--gutter-r);top:50%;height:0;pointer-events:none}
 .ask2 .sticker{margin:0;background:#1B1B2F;color:#fff;border-radius:18px;padding:12px 18px;font:400 min(25px,6.4vw)/1.1 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.02em;text-align:center;transform:translateY(-50%) rotate(-3deg)}
 .ask2 .sticker b{font:inherit;color:inherit;background:none;letter-spacing:inherit}
-@media (prefers-reduced-motion:reduce){.pick.pk1 .art svg{animation:none}}
+@media (prefers-reduced-motion:reduce){.pick .art svg *{animation:none!important}}
