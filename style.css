@@ -709,36 +709,37 @@ body:has(.scr.on)::after{display:none}
 .galsl figure{height:100%;background:#14110b}
 .galsl img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 
-/* v88 : écran de choix = design C « Pop » de la maquette (jaune BOIRE / rose MANGER, encre #1B1B2F) */
-.ask.ask2{--tsz:min(84px,21.5vw);--pad-l:max(24px,env(safe-area-inset-left,0px));--pad-r:max(24px,env(safe-area-inset-right,0px));padding:0;gap:0;background:#FFE14D;overflow:hidden}
+/* v89 : écran de choix = mise en page du design C « Pop » + couleurs « Bleu du soir » + verre et pizza animés */
+.ask.ask2{--tsz:min(84px,21.5vw);--pad-l:max(24px,env(safe-area-inset-left,0px));--pad-r:max(24px,env(safe-area-inset-right,0px));padding:0;gap:0;background:#FFB000;overflow:hidden}
 .ask.ask2::before{display:none}
 .ask2 .cbar{position:absolute;z-index:6;left:0;right:0;top:calc(14px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;padding:0 var(--pad-r) 0 var(--pad-l);pointer-events:none}
-.ask2 .cword{font:400 22px/1 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.02em;color:#1B1B2F}
-.ask2 .cbar .langbtn{position:static;pointer-events:auto;min-width:44px;height:44px;padding:0 14px;border-radius:22px;border:2.5px solid #1B1B2F;background:transparent;color:#1B1B2F;-webkit-backdrop-filter:none;backdrop-filter:none;font:700 14px 'Archivo',var(--body),sans-serif;letter-spacing:0}
-.pick{flex:1 1 0;min-height:0;border:0;border-radius:0;position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;text-align:left;overflow:hidden;color:#1B1B2F;font-family:'Archivo',var(--body),sans-serif;-webkit-tap-highlight-color:transparent;cursor:pointer}
-.pick.pk1{background:#FFE14D;padding:calc(92px + env(safe-area-inset-top,0px)) var(--pad-r) 84px var(--pad-l)}
-.pick.pk2{background:#FF5FA2;justify-content:flex-start;padding:72px var(--pad-r) calc(36px + env(safe-area-inset-bottom,0px)) var(--pad-l)}
-.pick:focus-visible{outline:4px solid #1B1B2F;outline-offset:-10px}
+.ask2 .cword{font:400 22px/1 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.02em;color:#16243D}
+.ask2 .cbar .langbtn{position:static;pointer-events:auto;min-width:44px;height:44px;padding:0 14px;border-radius:22px;border:2.5px solid #16243D;background:transparent;color:#16243D;-webkit-backdrop-filter:none;backdrop-filter:none;font:700 14px 'Archivo',var(--body),sans-serif;letter-spacing:0}
+.pick{flex:1 1 0;min-height:0;border:0;border-radius:0;position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;text-align:left;overflow:hidden;color:#16243D;font-family:'Archivo',var(--body),sans-serif;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.pick.pk1{flex:0 0 54%;background:#FFB000;padding:calc(92px + env(safe-area-inset-top,0px)) var(--pad-r) 62px var(--pad-l)}
+.pick.pk2{flex:1 1 0;background:#16243D;color:#FFF4E4;justify-content:flex-start;padding:84px var(--pad-r) calc(36px + env(safe-area-inset-bottom,0px)) var(--pad-l)}
+.pick:focus-visible{outline:4px solid #16243D;outline-offset:-10px}
+.pick.pk2:focus-visible{outline-color:#FFF4E4}
 .pick:active{filter:brightness(.96)}
 .pick .hrow{display:block}
 .pick .sub{display:block;white-space:nowrap;margin:0;padding:0;background:none;height:auto;border-radius:0;font:700 min(14px,3.6vw)/1.35 'Archivo',var(--body),sans-serif;letter-spacing:.05em;text-transform:uppercase;opacity:1}
-.pick .go{position:absolute;z-index:3;right:var(--pad-r);flex:none;width:60px;height:60px;border-radius:50%;background:#1B1B2F;display:grid;place-items:center;transition:transform .2s}
-.pick.pk1 .go{bottom:calc(84px + (var(--tsz) * .92 - 60px) / 2)}
-.pick .go svg{width:28px;height:28px;fill:none;stroke:#FFE14D;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-.pick.pk2 .go{top:42px}
-.pick.pk2 .go svg{stroke:#FF5FA2}
+.pick .go{position:absolute;z-index:3;right:var(--pad-r);flex:none;width:60px;height:60px;border-radius:50%;background:#16243D;display:grid;place-items:center;transition:transform .2s}
+.pick.pk1 .go{bottom:calc(62px + (var(--tsz) * .92 - 60px) / 2)}
+.pick .go svg{width:28px;height:28px;fill:none;stroke:#FFB000;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.pick.pk2 .go{top:54px;background:#FFB000}
+.pick.pk2 .go svg{stroke:#16243D}
 .pick:hover .go,.pick:focus-visible .go{transform:translateX(3px)}
 .pick .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.pick b{position:relative;z-index:2;display:block;white-space:nowrap;font:400 var(--tsz,min(84px,21.5vw))/.92 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase;color:#1B1B2F}
+.pick b{position:relative;z-index:2;display:block;white-space:nowrap;font:400 var(--tsz,min(84px,21.5vw))/.92 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase;color:inherit}
 .pick .art{position:absolute;pointer-events:none;z-index:1;transform:perspective(500px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .18s ease-out}
-.pick.pk1 .art{right:-36px;top:calc(40px + env(safe-area-inset-top,0px));width:240px;height:240px}
-.pick.pk2 .art{right:-50px;bottom:-40px;width:240px;height:240px}
+.pick.pk1 .art{right:12px;bottom:calc(62px + var(--tsz) * .92 + 6px + 19px + 14px);width:auto;height:min(225px,calc(100% - 237px));aspect-ratio:4/5}
+.pick.pk2 .art{right:-56px;bottom:-60px;width:280px;height:280px}
 .pick .art svg{width:100%;height:100%;overflow:visible}
-.pick.pk1 .art svg{animation:spin 60s linear infinite}
-.stickwrap{position:absolute;z-index:5;left:var(--pad-l);right:var(--pad-r);top:50%;height:0;pointer-events:none}
-.ask2 .sticker{margin:0;background:#1B1B2F;color:#fff;border-radius:18px;padding:14px 20px;font:400 min(26px,6.7vw)/1.08 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.02em;text-align:center;transform:translateY(-50%) rotate(-3deg)}
+.bubble{animation:rise 3.2s ease-in infinite;transform-box:fill-box}.bubble.b2{animation-delay:-.8s}.bubble.b3{animation-delay:-1.6s}.bubble.b4{animation-delay:-2.4s}
+.stickwrap{position:absolute;z-index:5;left:var(--pad-l);right:var(--pad-r);top:54%;height:0;pointer-events:none}
+.ask2 .sticker{margin:0;background:#FFF4E4;color:#16243D;box-shadow:0 6px 0 rgba(0,0,0,.22);border-radius:18px;padding:14px 20px;font:400 min(26px,6.7vw)/1.08 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.02em;text-align:center;transform:translateY(-50%) rotate(-3deg)}
 .ask2 .sticker b{font:inherit;color:inherit;background:none;letter-spacing:inherit}
-@media (prefers-reduced-motion:reduce){.pick.pk1 .art svg{animation:none}}
+@media (prefers-reduced-motion:reduce){.pick .art svg *{animation:none!important}}
 /* v87 : photos des lieux — pas de rectangle noir (fond chaud + apparition après chargement ; plus de flou « backdrop » sur le défilement, source connue de rectangles noirs sous iOS) */
 .galsl figure{background:linear-gradient(135deg,#3a2b17,#241a0d);transform:translateZ(0)}
 .galsl figure img{opacity:1;transition:opacity .25s ease}
