@@ -594,3 +594,30 @@ body::before{display:none!important}
 .ask{padding-top:calc(18px + env(safe-area-inset-top,0px))}
 /* voile léger sous la barre d'état pour garder l'heure lisible sur la carte */
 body::after{content:"";position:fixed;left:0;right:0;top:0;height:calc(env(safe-area-inset-top,0px) + 36px);background:linear-gradient(to bottom,rgba(24,17,10,.4),rgba(24,17,10,0));pointer-events:none;z-index:9}
+
+/* v65 : accueil — illustrations animées (verre qui pétille, pizza qui tourne) sur les cartes du design J */
+.tile::before{background:linear-gradient(to top,rgba(20,14,4,.86) 0,rgba(20,14,4,.45) 38%,rgba(20,14,4,0) 66%),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px)}
+.tile.t2::before{background:linear-gradient(to top,rgba(20,14,4,.86) 0,rgba(20,14,4,.45) 38%,rgba(20,14,4,0) 66%),repeating-linear-gradient(0deg,rgba(255,255,255,.08) 0 2px,transparent 2px 46px)}
+.tile .art{inset:auto;left:auto;bottom:auto;right:16px;top:10px;width:auto;height:76%;max-height:210px;aspect-ratio:4/5;transform:perspective(500px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg))!important;transition:transform .2s ease-out}
+.tile .art::after{display:none}
+.tile .art svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 8px 12px rgba(60,35,0,.3))}
+body:has(.scr.on)::after{display:none}
+
+/* v65 : « Jusqu'où marcher ? » — même style que les résultats (verre sombre, Fraunces, ambre) */
+.scrim{background:rgba(10,7,3,.5)}
+.sheet{background:rgba(28,23,18,.92);-webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2);color:#fff;border-radius:28px 28px 0 0;box-shadow:none;padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+.sh-grip{background:rgba(255,255,255,.3)}
+.sh-top small{color:rgba(255,255,255,.7);font-weight:500}
+.sh-top .roundbtn{background:rgba(255,255,255,.14);color:#fff;border-color:transparent;box-shadow:none}
+.sheet h3{font:300 28px/1.08 'Fraunces',Georgia,serif;letter-spacing:0;color:#fff}
+.sheet .h3b{font:300 22px/1.15 'Fraunces',Georgia,serif;letter-spacing:0}
+.wread b{font:300 64px/.95 'Fraunces',Georgia,serif;letter-spacing:0;color:#fff}
+.wread.w2 b{font-size:44px}
+.wread span{font-size:16px;font-weight:500;color:#fff}
+.wread em{color:rgba(255,255,255,.65)}
+.walker{color:#fff}
+#walkRange::-webkit-slider-runnable-track,#sunRange::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:linear-gradient(90deg,#FFB000 var(--p),rgba(255,255,255,.2) var(--p))}
+#walkRange::-moz-range-track,#sunRange::-moz-range-track{height:8px;border-radius:4px;background:linear-gradient(90deg,#FFB000 var(--p),rgba(255,255,255,.2) var(--p))}
+#walkRange::-webkit-slider-thumb,#sunRange::-webkit-slider-thumb{width:26px;height:26px;margin-top:-9px;border-radius:50%;background:rgba(255,176,0,.92);border:2.5px solid rgba(24,17,10,.5);box-shadow:0 0 0 7px rgba(255,176,0,.22),0 0 18px rgba(255,176,0,.35)}
+#walkRange::-moz-range-thumb,#sunRange::-moz-range-thumb{width:21px;height:21px;border-radius:50%;background:rgba(255,176,0,.92);border:2.5px solid rgba(24,17,10,.5);box-shadow:0 0 0 7px rgba(255,176,0,.22),0 0 18px rgba(255,176,0,.35)}
+#walkGo{background:#FFB000;color:#3D2700;font-weight:700}
