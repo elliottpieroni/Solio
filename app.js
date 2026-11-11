@@ -87,6 +87,25 @@ function hT(x,y){const c=Math.min(ZONE.w-1,Math.max(0,Math.floor(x-ZONE.x0))),r=
   const t=TA[j*ZONE.nx+i];if(!t)return 0;const v=t.T[((r-j*TS)>>1)*(TS/2)+((c-i*TS)>>1)];return v?v/10-10:0;}
 function blocked(px,py,z0,dx,dy,te){const dmax=Math.min(450,(ZONE.max-z0)/te);
   for(let d=1.5;d<dmax;d+=.7){const h=hS(px+dx*d,py+dy*d);if(h===-1e9)return false;if(h>z0+d*te)return true;}return false;}
+// ---- ensoleillement d'une terrasse : on échantillonne les cases de sol dégagé autour du point du lieu
+// (grille de 2 m, rayon 7 m) ; la terrasse est « au soleil » si au moins SUN_MIN de ces points reçoivent le soleil.
+// Feuillage : en hiver (nov.–mars) un rayon arrêté par de la végétation seule compte pour VEG_WINTER (arbres sans feuilles).
+const TER_R=7,TER_STEP=2,SUN_MIN=.2,VEG_WINTER=.3;
+const vegT=()=>(dMonth>=10||dMonth<=2)?VEG_WINTER:0;
+function vegMask(t){if(t.vg)return t.vg;const w=TS,T2=w/2,c=document.createElement('canvas');c.width=c.height=w;const g=c.getContext('2d',{willReadFrequently:true});
+  g.fillStyle='#000';g.strokeStyle='#000';g.lineWidth=3;
+  for(const b of t.b){g.beginPath();for(let i=0;i<b.c.length;i+=2){const x=b.c[i]-t.x0,y=t.y1-b.c[i+1];i?g.lineTo(x,y):g.moveTo(x,y);}g.closePath();g.fill();g.stroke();}
+  const bm=g.getImageData(0,0,w,w).data,v=new Uint8Array(w*w);
+  for(let r=0;r<w;r++)for(let q=0;q<w;q++){const i=r*w+q,sv=t.S[i];if(!sv)continue;if(sv/10-10-(t.T[(r>>1)*T2+(q>>1)]/10-10)>2&&bm[i*4+3]<10)v[i]=1;}
+  return t.vg=v;}
+function isVeg(x,y){const c=Math.floor(x-ZONE.x0),r=Math.floor(ZONE.y1-y);if(c<0||r<0)return false;const i=(c/TS)|0,j=(r/TS)|0;if(i>=ZONE.nx||j>=ZONE.ny)return false;const t=TA[j*ZONE.nx+i];if(!t)return false;return vegMask(t)[(r-j*TS)*TS+(c-i*TS)]===1;}
+// 0 = dégagé, 1 = bloqué (bâtiment, mur…), 2 = bloqué par de la végétation seulement
+function blockedV(px,py,z0,dx,dy,te){const dmax=Math.min(450,(ZONE.max-z0)/te);let veg=false;
+  for(let d=1.5;d<dmax;d+=.7){const X=px+dx*d,Y=py+dy*d,h=hS(X,Y);if(h===-1e9)return veg?2:0;if(h>z0+d*te){if(isVeg(X,Y))veg=true;else return 1;}}return veg?2:0;}
+function terPts(p){if(p.tp)return p.tp;const o=[[p.sx,p.sy,hT(p.sx,p.sy)+1.2]],R=TER_R-1;
+  for(let dx=-6;dx<=6;dx+=TER_STEP)for(let dy=-6;dy<=6;dy+=TER_STEP){if(!dx&&!dy)continue;if(dx*dx+dy*dy>R*R+TER_R)continue;const X=p.sx+dx,Y=p.sy+dy,h=hS(X,Y);if(h===-1e9||h-hT(X,Y)>=.6)continue;o.push([X,Y,hT(X,Y)+1.2]);}
+  return p.tp=o;}
+function sunFrac(pts,s,vt){let n=0;for(const q of pts){const b=blockedV(q[0],q[1],q[2],s.dx,s.dy,s.te);n+=b===0?1:b===2?vt:0;}return n/pts.length;}
 function openSky(x,y){let best=null,bd=1e9;
   for(let dy=-15;dy<=15;dy++)for(let dx=-15;dx<=15;dx++){const d=dx*dx+dy*dy;if(d>225||d>=bd)continue;const X=x+dx,Y=y+dy;
     if(hS(X,Y)-hT(X,Y)<.6&&hS(X+1,Y)-hT(X+1,Y)<1&&hS(X-1,Y)-hT(X-1,Y)<1&&hS(X,Y+1)-hT(X,Y+1)<1&&hS(X,Y-1)-hT(X,Y-1)<1){bd=d;best=[X,Y];}}
@@ -135,10 +154,10 @@ function sunAt(m){const s=sun(toUTC(dYear,dMonth,dDay,m));return s.el>.5*D2R?{dx
 function elAt(m){return sun(toUTC(dYear,dMonth,dDay,m)).el;}
 let SVS=null;
 function dayFor(p){if(!SVS)SVS=Array.from({length:NM},(_,k)=>sunAt(M0+k*STEP));
-  const z=hT(p.sx,p.sy)+1.2,a=new Uint8Array(NM);
-  for(let k=0;k<NM;k++){const s=SVS[k];a[k]=!s?0:blocked(p.sx,p.sy,z,s.dx,s.dy,s.te)?1:2;}p.day=a;}
+  const pts=terPts(p),vt=vegT(),a=new Uint8Array(NM),f=new Uint8Array(NM); // a : 0 nuit, 1 ombre, 2 soleil ; f : % de la terrasse au soleil
+  for(let k=0;k<NM;k++){const s=SVS[k];if(!s)continue;const fr=sunFrac(pts,s,vt);f[k]=Math.round(fr*100);a[k]=fr>=SUN_MIN?2:1;}p.day=a;p.dayF=f;}
 function computeDay(){SVS=null;for(const p of P)if(p.day)dayFor(p);}
-function stateAt(p,m){if(m<M0){const s=sunAt(m);if(!s)return 0;return blocked(p.sx,p.sy,hT(p.sx,p.sy)+1.2,s.dx,s.dy,s.te)?1:2;}
+function stateAt(p,m){if(m<M0){const s=sunAt(m);if(!s)return 0;return sunFrac(terPts(p),s,vegT())>=SUN_MIN?2:1;}
   return p.day[Math.min(NM-1,Math.round((m-M0)/STEP))];}
 const hm=m=>Math.floor(m/60)+' h '+String(Math.round(m%60)).padStart(2,'0');
 function pill(p,st){const k=Math.max(0,Math.min(NM-1,Math.round((selMin-M0)/STEP)));
@@ -801,7 +820,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v77',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v78',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
