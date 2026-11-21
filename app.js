@@ -592,8 +592,8 @@ function fitTitle(){try{const a=$('ask'),p2=document.querySelector('.pick.pk2');
   const wd=t=>{const s=document.createElement('span');s.setAttribute('aria-hidden','true');s.style.cssText="position:absolute;left:-9999px;top:0;white-space:nowrap;font:400 100px 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase";s.textContent=t;document.body.appendChild(s);const w=s.getBoundingClientRect().width;s.remove();return w;};
   const wm=wd('Manger'),wb=wd('Boire');if(!wm||!wb)return;
   const W=document.documentElement.clientWidth,pl=parseFloat(getComputedStyle(p2).paddingLeft)||24,pr=parseFloat(getComputedStyle(p2).paddingRight)||24;
-  // v92 : chaque mot a sa taille — BOIRE tient à gauche de la flèche ; MANGER dépasse du bord droit d’environ 1,5 % de l’écran (un petit bout du R coupé)
-  const szB=Math.min((W-pl-pr-60-12)/wb*100,150),szM=Math.min((W-pl+W*.015)/wm*100,150);
+  // v93 : chaque mot a sa taille — BOIRE tient à gauche de la flèche ; MANGER dépasse du bord droit d’environ 2,5 % de l’écran (un petit bout du R coupé)
+  const szB=Math.min((W-pl-pr-60-12)/wb*100,150),szM=Math.min((W-pl+W*.025)/wm*100,150);
   a.style.setProperty('--tsz',Math.max(48,szB).toFixed(1)+'px');a.style.setProperty('--tsz-m',Math.max(40,szM).toFixed(1)+'px');}catch(e){}}
 fitTitle();addEventListener('resize',fitTitle);
 if(document.fonts){document.fonts.ready.then(fitTitle);document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',fitTitle);}
@@ -876,7 +876,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v92',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v93',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
