@@ -762,6 +762,6 @@ body:has(.scr.on)::after{display:none}
 .hnow{margin:14px 0 0;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.08);font-size:13.5px;line-height:1.45;color:#fff}
 .hnow b{color:var(--sun)}
 
-/* v91 : plus de poignée grise en haut des fenêtres ; MANGER a sa propre taille pour rester entier */
+/* v91 : plus de poignée grise en haut des fenêtres ; MANGER a sa propre taille (le R dépasse un peu à droite) */
 .walk .sheet{padding-top:20px}
 .pick.pk2 b{font-size:var(--tsz-m,var(--tsz))}
