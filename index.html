@@ -176,7 +176,7 @@
   </div>
 </div>
 
-<div class="ver" aria-hidden="true">v94</div>
+<div class="ver" aria-hidden="true">v95</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="rot" id="rot" role="alert"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="5" width="18" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M24 38h0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><b>Tourne ton téléphone</b><span>Solio se lit à la verticale.</span></div>
 <div class="gal" id="gal" hidden role="dialog" aria-modal="true" aria-label="Photos du lieu">
@@ -210,7 +210,15 @@ window.ZLOAD=(async()=>{const g=u=>{const ac=window.AbortController?new AbortCon
 ZLOAD.then(()=>{const s=document.createElement('script');s.src='app.js?v=89';document.body.appendChild(s);},
   ()=>{const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;z-index:99;display:grid;place-content:center;padding:24px;text-align:center;font:16px system-ui;background:#fff8ec;color:#2b2217';d.innerHTML='<b>Impossible de charger les données.</b><br>Vérifie ta connexion, puis réessaie.<br><button style="margin-top:18px;padding:12px 22px;border:0;border-radius:999px;background:#ffb000;color:#2a1700;font:600 16px system-ui" onclick="location.reload()">Réessayer</button>';document.body.appendChild(d);});
 </script>
-<script>if("serviceWorker"in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!window.__rl){window.__rl=1;location.reload();}});addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
+<script>
+// v95 : quand une nouvelle version du service worker prend la main, la page est en général déjà à jour (fichiers de l'app chargés réseau d'abord).
+// On ne recharge que si elle tourne encore sur une ancienne version, et sans rejouer l'animation d'ouverture.
+if("serviceWorker"in navigator){const had=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!had||window.__rl)return;window.__rl=1;
+    fetch("sw.js",{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=/terrasses-(v\d+)/.exec(t);
+      if(m&&typeof APPV!=="undefined"&&m[1]!==APPV){try{sessionStorage.setItem("solio-nosplash","1");}catch(e){}location.reload();}}).catch(()=>{});});
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+</script>
 </body>
 </html>
 <!-- v21 -->

@@ -578,7 +578,10 @@ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 (function(){const C=['#ff4d6d','#fff','#2a1700','#3aa0e8','#7ad35f','#ff8a1f','#b06cff','#ffe45e'],box=$('conf');if(!box)return;
   for(let i=0;i<46;i++){const e=document.createElement('i'),a=Math.random()*Math.PI*2,d=90+Math.random()*190;
     const w=5+Math.random()*7,sq=Math.random()<.5;e.style.cssText='--x:'+Math.round(Math.cos(a)*d)+'px;--y:'+Math.round(Math.sin(a)*d*.8-40)+'px;--a:'+Math.round((Math.random()-.5)*540)+'deg;--d:'+(1.15+Math.random()*.35).toFixed(2)+'s;--c:'+C[i%C.length]+';--w:'+w+'px;--h:'+(sq?w:w*2.2)+'px;--r:'+(Math.random()<.4?'50%':'2px');box.appendChild(e);}})();
-let splashT=setTimeout(()=>showAsk(),reduced?500:4300);
+// rechargement technique (mise à jour, changement de langue) : on passe directement à l'écran de choix, sans rejouer l'animation
+let noSplash=false;try{noSplash=sessionStorage.getItem('solio-nosplash')==='1';sessionStorage.removeItem('solio-nosplash');}catch(e){}
+if(noSplash){const sp=$('splash');sp.classList.remove('on');sp.hidden=true;}
+let splashT=setTimeout(()=>showAsk(),noSplash?0:reduced?500:4300);
 $('splash').addEventListener('click',()=>{clearTimeout(splashT);showAsk();});
 function showAsk(){go('ask');}
 // tuiles : inclinaison au doigt, éclats de soleil au choix
@@ -876,7 +879,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v94',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v95',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
@@ -931,7 +934,7 @@ fetch('photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{
 // ---- langue : FR / EN (traduction du DOM ; les noms de lieux restent tels quels)
 document.documentElement.lang=LANG;
 document.querySelectorAll('.langbtn').forEach(b=>{b.textContent=LANG==='en'?'FR':'EN';b.setAttribute('aria-label',LANG==='en'?'Passer en français':'Switch to English');
-  b.onclick=()=>{try{localStorage.setItem('solio-lang',LANG==='en'?'fr':'en');}catch(e){}location.reload();};});
+  b.onclick=()=>{try{localStorage.setItem('solio-lang',LANG==='en'?'fr':'en');sessionStorage.setItem('solio-nosplash','1');}catch(e){}location.reload();};});
 if(LANG==='en'){(()=>{
   const EX={'Autour de':'Around','terrasses, au soleil seulement':'sunny terraces only','Tout':'All','Boire':'Drink','Manger':'Eat','Terrasses à l’ombre':'Shaded terraces','Maintenant':'Now','h':':',
    'Localisateur de terrasses ensoleillées autour de toi':'Find sunny terraces around you','Un coin de':'A touch of','soleil':'sunshine','pour…':'to…','C’est parti':'Let’s go','un verre':'a drink','Bars, cafés, pubs':'Bars, cafés, pubs','Miam':'Yum','dehors':'outside','Restaurants, glaciers, snacks':'Restaurants, ice cream, snacks',
