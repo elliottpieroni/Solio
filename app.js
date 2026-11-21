@@ -593,7 +593,7 @@ function burst(x,y,host){const cols=['#ffb000','#ffd36b','#ff7058','#ffffff','#f
 // taille des titres BOIRE / MANGER, recalculée selon la police réellement chargée et la largeur de l'écran
 function fitTitle(){try{const a=$('ask'),p2=document.querySelector('.pick.pk2');if(!a||!p2)return;
   const wd=t=>{const s=document.createElement('span');s.setAttribute('aria-hidden','true');s.style.cssText="position:absolute;left:-9999px;top:0;white-space:nowrap;font:400 100px 'Archivo Black','Archivo',Impact,sans-serif;letter-spacing:-.04em;text-transform:uppercase";s.textContent=t;document.body.appendChild(s);const w=s.getBoundingClientRect().width;s.remove();return w;};
-  const wm=wd('Manger'),wb=wd('Boire');if(!wm||!wb)return;
+  const pk1b=document.querySelector('.pick.pk1 b'),wm=wd('Manger'),wb=wd((pk1b&&pk1b.textContent.trim())||'Boire');if(!wm||!wb)return;
   const W=document.documentElement.clientWidth,pl=parseFloat(getComputedStyle(p2).paddingLeft)||24,pr=parseFloat(getComputedStyle(p2).paddingRight)||24;
   // v94 : chaque mot a sa taille — BOIRE tient à gauche de la flèche ; MANGER dépasse du bord droit d’environ 3,5 % de l’écran (un petit bout du R coupé)
   const szB=Math.min((W-pl-pr-60-12)/wb*100,150),szM=Math.min((W-pl+W*.035)/wm*100,150);
@@ -879,7 +879,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v96',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v97',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
@@ -951,7 +951,7 @@ if(LANG==='en'){(()=>{
   const FR=[[/Vous êtes hors de la zone couverte \(commune d’Antibes\)\. Point de départ : /,'You are outside the covered area (Antibes). Starting point: '],[/Soleil jusqu’au soir/g,'Sun until evening'],[/Soleil jusqu’à/g,'Sun until'],[/Ombre jusqu’au coucher/g,'Shade until sunset'],[/Ombre · soleil à/g,'Shade · sun at'],[/ombres à/g,'shade at'],[/ min à pied/g,' min walk'],[/· terrasse \?/g,'· terrace ?'],[/· terrasse/g,'· terrace'],
     [/^Glacier(?= ·|$)/,'Ice cream'],[/Restauration rapide/g,'Fast food'],[/Lever (\d+) h (\d\d) · coucher/g,'Sunrise $1:$2 · sunset'],[/^(\d+) h$/,'$1:00'],[/(\d+) h (\d\d)/g,'$1:$2'],[/(\d),(\d) km/g,'$1.$2 km'],[/^Agrandir la vue aérienne de /,'Enlarge aerial view of '],[/contributeur/g,'contributor']];
   const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
-    if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.pick')){if(core==='Boire')r='Grab';else if(core==='Manger')r='Eat';}
+    if(node&&node.parentElement&&node.parentElement.closest&&node.parentElement.closest('.pick')){if(core==='Boire')r='Drink';else if(core==='Manger')r='Eat';}
     if(r==null){r=core;for(const [re,t] of FR)r=r.replace(re,t);}return m[1]+r+m[3];};
   const doText=n=>{if(n.parentElement&&n.parentElement.closest&&n.parentElement.closest('#galuv,.csun b'))return;const v=n.nodeValue,r=tr(v,n);if(r!==v)n.nodeValue=r;};
   const doAttr=e=>{for(const a of ['aria-label','title']){const v=e.getAttribute&&e.getAttribute(a);if(v){const r=tr(v);if(r!==v)e.setAttribute(a,r);}}};
@@ -960,4 +960,5 @@ if(LANG==='en'){(()=>{
   walk(document.body);
   new MutationObserver(ms=>{for(const m of ms){if(m.type==='childList')m.addedNodes.forEach(walk);else if(m.type==='characterData')doText(m.target);else if(m.type==='attributes')doAttr(m.target);}})
     .observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-label','title']});
+  fitTitle(); // les titres viennent d'être traduits : on recalcule leur taille
 })();}
