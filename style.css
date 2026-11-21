@@ -765,3 +765,9 @@ body:has(.scr.on)::after{display:none}
 /* v91 : plus de poignée grise en haut des fenêtres ; MANGER a sa propre taille (le R dépasse un peu à droite) */
 .walk .sheet{padding-top:20px}
 .pick.pk2 b{font-size:var(--tsz-m,var(--tsz))}
+
+/* v96 : pas de contour de focus autour du X des fenêtres (le X reçoit le focus à l'ouverture) ; au clavier, un léger fond le signale */
+.sh-top .roundbtn:focus,.sh-top .roundbtn:focus-visible{outline:none}
+.sh-top .roundbtn:focus-visible{background:rgba(255,255,255,.26)}
+/* v96 : un double appui sur les flèches (ou n'importe quel bouton) ne zoome plus la page ; le pincement reste possible */
+button,a,.gal,.galarr{touch-action:manipulation}
