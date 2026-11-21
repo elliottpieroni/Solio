@@ -771,3 +771,7 @@ body:has(.scr.on)::after{display:none}
 .sh-top .roundbtn:focus-visible{background:rgba(255,255,255,.26)}
 /* v96 : un double appui sur les flèches (ou n'importe quel bouton) ne zoome plus la page ; le pincement reste possible */
 button,a,.gal,.galarr{touch-action:manipulation}
+
+/* v98 : titres BOIRE / MANGER masqués le temps que leur police arrive (évite qu'ils changent de taille sous les yeux) */
+.ask2 .pick b{transition:opacity .2s}
+.ask2.fitting .pick b{opacity:0}

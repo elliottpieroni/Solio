@@ -599,7 +599,17 @@ function fitTitle(){try{const a=$('ask'),p2=document.querySelector('.pick.pk2');
   const szB=Math.min((W-pl-pr-60-12)/wb*100,150),szM=Math.min((W-pl+W*.035)/wm*100,150);
   a.style.setProperty('--tsz',Math.max(48,szB).toFixed(1)+'px');a.style.setProperty('--tsz-m',Math.max(40,szM).toFixed(1)+'px');}catch(e){}}
 fitTitle();addEventListener('resize',fitTitle);
-if(document.fonts){document.fonts.ready.then(fitTitle);document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',fitTitle);}
+// v98 : la taille dépend de la police Archivo Black (Google Fonts). Tant que la feuille Google n'est pas appliquée, document.fonts.ready
+// se résout tout de suite et on mesurerait la police de secours (cas visible quand l'écran s'affiche sans l'intro, ex. changement de langue).
+// On attend donc que la police soit réellement chargée ; les titres restent masqués en attendant (1,5 s au plus).
+{const ask=$('ask');ask.classList.add('fitting');
+  const done=()=>{fitTitle();ask.classList.remove('fitting');};
+  const archivo=()=>{try{for(const f of document.fonts)if(f.family.replace(/["']/g,'')==='Archivo Black'&&f.status==='loaded')return true;}catch(e){}return false;};
+  const wait=()=>{try{document.fonts.load("400 100px 'Archivo Black'",'BOIREMANGERDRINKEAT').then(()=>{if(archivo())done();}).catch(()=>{});}catch(e){}};
+  if(document.fonts&&document.fonts.load){const gf=document.querySelector('link[href*="fonts.googleapis"]');if(gf)gf.addEventListener('load',wait);wait();
+    document.fonts.ready.then(()=>{if(archivo())done();else fitTitle();});
+    document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>{if(archivo())done();else fitTitle();});}
+  setTimeout(done,1500);}
 document.querySelectorAll('.pick').forEach(b=>{
   const art=b.querySelector('.art');
   const tilt=e=>{const r=b.getBoundingClientRect(),nx=(e.clientX-r.left)/r.width-.5,ny=(e.clientY-r.top)/r.height-.5;art.style.setProperty('--ry',(nx*26)+'deg');art.style.setProperty('--rx',(-ny*22)+'deg');};
@@ -879,7 +889,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v97',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v98',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
