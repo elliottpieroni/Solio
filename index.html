@@ -38,6 +38,7 @@
   </header>
 
   <button class="roundbtn glass recenter" id="recenter" hidden aria-label="Recentrer la carte"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.500"/><circle cx="12" cy="12" r="8"/><path d="M12 1.500v3M12 19.500v3M1.500 12h3M19.500 12h3.500"/></svg></button>
+  <button class="roundbtn glass helpbtn" id="helpBtn" aria-label="Comment le classement est calculé">?</button>
   <div class="zoom glass" id="zoom"><button id="zin" aria-label="Zoom avant">+</button><button id="zout" aria-label="Zoom arrière">−</button></div>
   <section class="panel glass" id="panel">
     <button class="grab" id="grab" aria-expanded="false" aria-label="Afficher la liste"></button>
@@ -137,6 +138,25 @@
     <footer class="t5f stg" style="--i:7"><button class="cta" id="t5map">Voir sur la carte<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></footer>
   </section>
 
+  <!-- fenêtre : comment le classement est calculé -->
+  <div class="walk help" id="help" hidden>
+    <div class="scrim" id="helpScrim"></div>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="helpT">
+      <div class="sh-grip" aria-hidden="true"></div>
+      <div class="sh-top"><small>Le classement</small><button class="roundbtn" id="helpX" aria-label="Fermer"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <h3 id="helpT">Comment on choisit le N°&nbsp;1</h3>
+      <p class="hint" id="helpIntro"></p>
+      <ul class="hrows">
+        <li><b>40</b><div><strong>Soleil qui dure</strong><span>Jusqu’à 3&nbsp;h de soleil sans interruption à partir de l’heure choisie.</span></div></li>
+        <li><b>30</b><div><strong>Proche à pied</strong><span>Distance réelle par les rues, pas à vol d’oiseau.</span></div></li>
+        <li><b>20</b><div><strong>Bien ensoleillée</strong><span>Part moyenne de la terrasse au soleil, calculée avec le relief et les bâtiments.</span></div></li>
+        <li><b>10</b><div><strong>Terrasse confirmée</strong><span>Signalée par OpenStreetMap ou Google, ou vérifiée. 3 points si elle est seulement probable.</span></div></li>
+      </ul>
+      <p class="hint">La meilleure note passe en tête&nbsp;; à égalité, la plus proche.</p>
+      <p class="hnow" id="helpNow" hidden></p>
+    </section>
+  </div>
+
   <!-- fenêtre : distance à pied -->
   <div class="walk" id="walk" hidden>
     <div class="scrim" id="walkScrim"></div>
@@ -158,7 +178,7 @@
   </div>
 </div>
 
-<div class="ver" aria-hidden="true">v89</div>
+<div class="ver" aria-hidden="true">v90</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="rot" id="rot" role="alert"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="5" width="18" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M24 38h0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><b>Tourne ton téléphone</b><span>Solio se lit à la verticale.</span></div>
 <div class="gal" id="gal" hidden role="dialog" aria-modal="true" aria-label="Photos du lieu">

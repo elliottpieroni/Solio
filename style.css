@@ -748,3 +748,16 @@ body:has(.scr.on)::after{display:none}
 .galarr{background:rgba(20,14,4,.45)!important}
 .galtop button{background:rgba(20,14,4,.45)!important}
 .galinfo::before{background:rgba(20,14,4,.12)!important}
+
+/* v90 : « ? » discret à côté de la distance, et fenêtre qui explique le classement */
+.helpbtn{position:absolute;top:calc(66px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:3;width:32px;height:32px;padding:0;font:600 15px/1 inherit;opacity:.85}
+.roundbtn.glass.helpbtn{color:#fff}
+.help .sheet{max-height:88%;overflow-y:auto}
+.help .hint{margin:10px 0 0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.75)}
+.hrows{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:12px}
+.hrows li{display:flex;gap:14px;align-items:flex-start}
+.hrows b{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--sun);color:var(--sun-ink);font:600 16px/1 inherit;font-variant-numeric:tabular-nums}
+.hrows strong{display:block;font-size:15px;font-weight:600;color:#fff}
+.hrows span{display:block;margin-top:2px;font-size:13.5px;line-height:1.4;color:rgba(255,255,255,.7)}
+.hnow{margin:14px 0 0;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.08);font-size:13.5px;line-height:1.45;color:#fff}
+.hnow b{color:var(--sun)}

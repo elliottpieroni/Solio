@@ -608,16 +608,42 @@ document.querySelectorAll('.pick').forEach(b=>{
     setTimeout(()=>{delete b.dataset.busy;openWalk();},reduced?0:420);});
 });
 
-// classement : soleil maintenant, durée du soleil à venir, proximité, terrasse signalée
+// classement (v90) : note sur 100 = durée du soleil (40) + part de la terrasse au soleil (20) + distance à pied réelle (30) + terrasse confirmée (10)
+// distances à pied depuis le point de départ : un seul Dijkstra sur le graphe des rues, gardé en cache tant que le départ ne change pas
+let WD=null;
+function walkDists(fx,fy){
+  if(WD&&WD.fx===fx&&WD.fy===fy)return WD;
+  const n=GR.nodes.length,dist=new Float64Array(n).fill(1e12),done=new Uint8Array(n),s=snapSeg(fx,fy);
+  WD={fx,fy,dist,ok:!!(s&&s.d<=90)};if(!WD.ok)return WD;
+  const heap=[];const push=v=>{heap.push(v);let i=heap.length-1;while(i>0){const p=(i-1)>>1;if(heap[p][0]<=heap[i][0])break;[heap[p],heap[i]]=[heap[i],heap[p]];i=p;}};
+  const pop=()=>{const t=heap[0],l=heap.pop();if(heap.length){heap[0]=l;let i=0;for(;;){let c=2*i+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1][0]<heap[c][0])c++;if(heap[i][0]<=heap[c][0])break;[heap[i],heap[c]]=[heap[c],heap[i]];i=c;}}return t;};
+  const lim=WALK_MAX*WALK*1.6;
+  for(const e of [s.a,s.b]){const d=s.d+Math.hypot(GR.nodes[e][0]-s.px,GR.nodes[e][1]-s.py);if(d<dist[e]){dist[e]=d;push([d,e]);}}
+  while(heap.length){const [d,u]=pop();if(done[u])continue;done[u]=1;if(d>lim)break;
+    for(const [v,w] of GR.adj[u])if(d+w<dist[v]){dist[v]=d+w;push([dist[v],v]);}}
+  WD.snap=s;return WD;}
+function walkDist(p,fx,fy){
+  const direct=Math.hypot(p.sx-fx,p.sy-fy),W=walkDists(fx,fy);
+  if(p.snap===undefined)p.snap=snapSeg(p.sx,p.sy)||null;
+  const t=p.snap;let len=1e12;
+  if(W.ok&&t&&t.d<=90){
+    for(const e of [t.a,t.b])len=Math.min(len,W.dist[e]+Math.hypot(GR.nodes[e][0]-t.px,GR.nodes[e][1]-t.py)+t.d);
+    const s=W.snap;if(s.a===t.a&&s.b===t.b||s.a===t.b&&s.b===t.a)len=Math.min(len,s.d+Math.hypot(s.px-t.px,s.py-t.py)+t.d);}
+  // pas de rue proche ou détour absurde : même repli que l'itinéraire affiché (ligne droite × 1,25)
+  return len>direct*3.2+120?direct*1.25:Math.max(direct,len);}
+const SC_W={sun:40,cov:20,near:30,terr:10},SUN_CAP=180;
 function topSpots(all){
   const [fx,fy]=PLACES[from].slice(1),k=clamp(Math.round((selMin-M0)/STEP),0,NM-1),out=[],R=walkMin*WALK;
   for(const p of P){if(!p.day)continue;const b=BOIRE.has(p.k);if(cat==='boire'&&!b||cat==='manger'&&b||!hasT(p))continue;
-    const d=Math.hypot(p.sx-fx,p.sy-fy);if(d>R)continue;
-    const st=stateAt(p,selMin);let j=k;if(st===2)while(j<NM&&p.day[j]===2)j++;
-    const sunMin=st===2?(j-k)*STEP:0;
-    if(st!==2||sunMin<sunNeed)continue;
-    out.push({p,d,st,sunMin,score:(st===2?1:0)+Math.min(sunMin,240)/240*.8+(1-d/R)*.5+(p.o||TERR[p.i]===2||MAN[p.i]===2?.15:p.pr?.04:0)});}
-  out.sort((a,b)=>b.score-a.score);return all?out:out.slice(0,5);
+    if(Math.hypot(p.sx-fx,p.sy-fy)>R)continue; // la distance à pied est toujours ≥ la ligne droite : tri rapide
+    const st=stateAt(p,selMin);if(st!==2)continue;
+    let j=k,cs=0;while(j<NM&&p.day[j]===2){if(j-k<SUN_CAP/STEP)cs+=p.dayF[j];j++;}
+    const sunMin=(j-k)*STEP;if(sunMin<sunNeed)continue;
+    const d=walkDist(p,fx,fy);if(d>R)continue;
+    const nS=Math.min(j-k,SUN_CAP/STEP),terr=p.o||TERR[p.i]===2||MAN[p.i]===2?1:p.pr?.3:0;
+    const parts={sun:Math.min(sunMin,SUN_CAP)/SUN_CAP*SC_W.sun,cov:(nS?cs/nS/100:0)*SC_W.cov,near:(1-d/R)*SC_W.near,terr:terr*SC_W.terr};
+    out.push({p,d,st,sunMin,parts,score:parts.sun+parts.cov+parts.near+parts.terr});}
+  out.sort((a,b)=>b.score-a.score||a.d-b.d);return all?out:out.slice(0,5);
 }
 function spotCard(r,i){
   const {p,d,st}=r,[cls,txt]=pill(p,st);
@@ -789,6 +815,23 @@ $('walkGo').onclick=async()=>{save();closeWalk();await READY;if(!G)await boot();
   try{if(MYIDX<0&&locP)await Promise.race([locP,new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   try{await Promise.race([needArea(),new Promise(r=>setTimeout(r,12000))]);}catch(e){console.warn(e);}
   openTop5Map();if(night==='soir')toast('Le soleil est couché : on te montre demain à 12 h 30.');else if(night==='matin')toast('Le soleil n’est pas encore levé : on te montre aujourd’hui à 12 h 30.');};
+// v90 : fenêtre « ? » — explique la note et montre le détail pour le N° 1 affiché
+function openHelp(){
+  const L=(fr,en)=>LANG==='en'?en:fr,n=v=>Math.round(v);
+  $('helpIntro').textContent=L('On garde les terrasses au soleil à l’heure choisie, pour au moins '+sunNeed+' min encore, à '+walkMin+' min à pied maximum. Chacune reçoit ensuite une note sur 100 :',
+    'We keep terraces that are sunny at the chosen time, for at least '+sunNeed+' more minutes, within a '+walkMin+'-minute walk. Each one then gets a score out of 100:');
+  const hn=$('helpNow');let r=null;try{if(top5Mode&&G)r=topSpots()[0];}catch(e){}
+  if(!top5Mode){hn.hidden=false;hn.textContent=L('Avec le bouton de rayon, la liste est triée par distance seule (du plus proche au plus loin). Reviens aux meilleurs spots pour retrouver ce classement.',
+    'With the radius button, the list is sorted by distance only (closest first). Go back to the top spots to get this ranking again.');}
+  else if(r&&r.parts){const q=r.parts;hn.hidden=false;hn.textContent='';
+    const b=document.createElement('b');b.textContent=r.p.n+' · '+n(r.score)+'/100';
+    hn.append(b,document.createTextNode(L(' — soleil '+n(q.sun)+', distance '+n(q.near)+' ('+n(r.d)+' m à pied), ensoleillement '+n(q.cov)+', terrasse '+n(q.terr)+'.',
+      ' — sun '+n(q.sun)+', distance '+n(q.near)+' ('+n(r.d)+' m walk), coverage '+n(q.cov)+', terrace '+n(q.terr)+'.')));}
+  else hn.hidden=true;
+  const w=$('help');w.hidden=false;requestAnimationFrame(()=>requestAnimationFrame(()=>w.classList.add('on')));modalOpen(w,'helpX');}
+function closeHelp(){const w=$('help');modalClose(w);w.classList.remove('on');setTimeout(()=>{if(!w.classList.contains('on'))w.hidden=true;},420);}
+$('helpBtn').onclick=openHelp;$('helpX').onclick=closeHelp;$('helpScrim').onclick=closeHelp;
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('help').hidden)closeHelp();});
 $('walkX').onclick=closeWalk;$('walkScrim').onclick=closeWalk;
 $('walkChip').onclick=openWalk;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('walk').hidden)closeWalk();});
@@ -833,7 +876,7 @@ $('galx').onclick=closeGal;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&galP)closeGal();});
 
 // ---- photos Google Places (clé dans config.js)
-const APPV='v89',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
+const APPV='v90',DG={};function diag(k,v){DG[k]=v;const e=document.querySelector('.ver');if(e)e.textContent=APPV+(DG.sv?' · '+DG.sv:'')+(DG.gp?' · '+DG.gp:'');}
 const GKEY=(window.GOOGLE_KEY||'').trim();let GP={},gpOff=!GKEY;const gpP=new Map(),GP_TTL=7*864e5,GP_MSG='Photos Google indisponibles pour le moment';
 // plafond d'appels Google (Places + Street View) par session : au-delà, l'app garde ses images locales
 const CALLS={n:0,max:250},callOk=()=>CALLS.n<CALLS.max&&++CALLS.n>0;
@@ -900,7 +943,8 @@ if(LANG==='en'){(()=>{
    'La localisation n’est pas disponible sur cet appareil.':'Location is not available on this device.','Localisation refusée. Autorisez-la dans Réglages > Confidentialité > Service de localisation.':'Location denied. Allow it in Settings > Privacy > Location Services.','Position introuvable pour le moment. Réessayez dehors ou choisissez un point dans la liste.':'Position not found right now. Try again outside or pick a point in the list.',
    'Aucune terrasse ensoleillée dans ce rayon : élargis la distance ou réduis les minutes de soleil.':'No sunny terrace in this radius: widen the distance or reduce the minutes of sun.','Le soleil est couché : on te montre demain à 12 h 30.':'The sun has set: showing you tomorrow at 12:30.','Le soleil n’est pas encore levé : on te montre aujourd’hui à 12 h 30.':'The sun has not risen yet: showing you today at 12:30.',
    'Bois un verre en terrasse':'Have a drink on a terrace','Mange en terrasse':'Eat on a terrace','au soleil':'in the sun','ici :':'here:',
-   'Pour boire un verre':'To grab a drink','Pour manger dehors':'To eat outside','Aucun lieu trouvé sur Google Maps':'No place found on Google Maps','Pas de photo Google pour ce lieu':'No Google photo for this place','Photos Google indisponibles pour le moment':'Google photos unavailable right now','Vérifie ta connexion, puis réessaie.':'Check your connection, then try again.','Réessayer':'Retry','Recentrer la carte':'Recenter the map'};
+   'Pour boire un verre':'To grab a drink','Pour manger dehors':'To eat outside','Aucun lieu trouvé sur Google Maps':'No place found on Google Maps','Pas de photo Google pour ce lieu':'No Google photo for this place','Photos Google indisponibles pour le moment':'Google photos unavailable right now','Vérifie ta connexion, puis réessaie.':'Check your connection, then try again.','Réessayer':'Retry','Recentrer la carte':'Recenter the map',
+   'Comment le classement est calculé':'How the ranking works','Le classement':'How we rank','Comment on choisit le N° 1':'How we pick No. 1','Soleil qui dure':'Lasting sun','Jusqu’à 3 h de soleil sans interruption à partir de l’heure choisie.':'Up to 3 h of uninterrupted sun from the chosen time.','Proche à pied':'Short walk','Distance réelle par les rues, pas à vol d’oiseau.':'Real walking distance along the streets, not as the crow flies.','Bien ensoleillée':'Well lit','Part moyenne de la terrasse au soleil, calculée avec le relief et les bâtiments.':'Average share of the terrace in the sun, computed from terrain and buildings.','Terrasse confirmée':'Confirmed terrace','Signalée par OpenStreetMap ou Google, ou vérifiée. 3 points si elle est seulement probable.':'Listed on OpenStreetMap or Google, or checked by hand. 3 points if only likely.','La meilleure note passe en tête ; à égalité, la plus proche.':'The highest score comes first; on a tie, the closest one.'};
   const FR=[[/Vous êtes hors de la zone couverte \(commune d’Antibes\)\. Point de départ : /,'You are outside the covered area (Antibes). Starting point: '],[/Soleil jusqu’au soir/g,'Sun until evening'],[/Soleil jusqu’à/g,'Sun until'],[/Ombre jusqu’au coucher/g,'Shade until sunset'],[/Ombre · soleil à/g,'Shade · sun at'],[/ombres à/g,'shade at'],[/ min à pied/g,' min walk'],[/· terrasse \?/g,'· terrace ?'],[/· terrasse/g,'· terrace'],
     [/^Glacier(?= ·|$)/,'Ice cream'],[/Restauration rapide/g,'Fast food'],[/Lever (\d+) h (\d\d) · coucher/g,'Sunrise $1:$2 · sunset'],[/^(\d+) h$/,'$1:00'],[/(\d+) h (\d\d)/g,'$1:$2'],[/(\d),(\d) km/g,'$1.$2 km'],[/^Agrandir la vue aérienne de /,'Enlarge aerial view of '],[/contributeur/g,'contributor']];
   const tr=(s,node)=>{const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s),core=m[2].replace(/\u00a0/g,' ');if(!core)return s;let r=EX[core];
